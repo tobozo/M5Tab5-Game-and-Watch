@@ -2,6 +2,9 @@
 
 A game selection menu to run single screen Game&Watch roms on M5Stack Tab5 via [LCD Game Emulator](https://github.com/bzhxx/LCD-Game-Emulator).
 
+<img width="512" alt="image" src="https://github.com/user-attachments/assets/b5cde28d-9204-441e-95f5-2984c5c87be3" />
+
+
 ## Supported Games:
 
 Game Name                          | ROM Name
