@@ -1,3 +1,10 @@
+/*\
+ *
+ * M5Stack Tab5 Game&Watch Emulator
+ *
+ * A speculation brought to you by tobozo, copyleft (c+) 2025
+ *
+\*/
 #pragma once
 
 #include <Wire.h>

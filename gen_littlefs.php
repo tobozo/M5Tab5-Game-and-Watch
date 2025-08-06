@@ -12,13 +12,7 @@
  *
  *
  *
- *
- *
- *
- *
  * */
-
-
 
 
 // temporary dir for imagemagick, no trailing slash
@@ -470,7 +464,6 @@ foreach($games as $game) {
   asort($inputs);
 
   $GwTouchButtons[] = sprintf("GWTouchButton %10s[] = { %s };", $btns, implode(", ", array_merge($controls, $inputs)) );
-  $GwTouchButtonsSet[] = sprintf('GWButtonsSet %14s( %16s, %s );', $layer.$btns, '"'.$layer.$btns.'"', $btns);
   $objects[] = sprintf('GWGame gw_%-8s( %-24s, %-14s, %-6s, %-8s );', $game, '"'.$gameTitle.'"', '"gnw_'.$game.'"', $layer, $btns);
 
 
@@ -501,7 +494,6 @@ asort($GwTouchButtons);
 file_put_contents("gw_games.hpp",
   sprintf($gw_games_fmt,
     implode(PHP_EOL, array_unique($GwTouchButtons)),
-    //implode(PHP_EOL, array_unique($GwTouchButtonsSet)),
     implode(PHP_EOL, $objects),
     implode(', ', $gameslist),
   )

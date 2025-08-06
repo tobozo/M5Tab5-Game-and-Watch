@@ -36,6 +36,7 @@
  * TODO:
  *  - MAME ROM/Artwork importer+shrinker+packer
  *  - Auto sleep / screen dim / wake on touch
+ *  - Joystick/Keyboard calibration
  *
  * */
 
