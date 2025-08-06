@@ -1,42 +1,42 @@
 # M5Tab5-Game-and-Watch
 
-A demo program using minimal code to run a single screen Game&Watch rom on M5Stack Tab5 via [LCD Game Emulator](https://github.com/bzhxx/LCD-Game-Emulator).
+A game selection menu to run single screen Game&Watch roms on M5Stack Tab5 via [LCD Game Emulator](https://github.com/bzhxx/LCD-Game-Emulator).
 
 ## Supported Games:
 
-Game Name              | ROM Name
----------------------- | -----------
-Ball                   | gnw_ball
-Balloon Fight          | gnw_bfight
-Chef                   | gnw_chef 
-Climber                | gnw_climber 
-Donkey Kong Jr.        | gnw_dkjr 
-Donkey Kong Jr.        | gnw_dkjrp
-Fire                   | gnw_fire 
-Fire Attack            | gnw_fireatk 
-Fire                   | gnw_fires 
-Flagman                | gnw_flagman 
-Helmet                 | gnw_helmet
-Judge                  | gnw_judge 
-Lion                   | gnw_lion
-Manhole                | gnw_manhole 
-Manhole                | gnw_manholeg
-Mario's Cement Factory | gnw_mariocm
-Mario's Cement Factory | gnw_mariocmt
-Mario the Juggler      | gnw_mariotj
-Mario's Bombs Away     | gnw_mbaway
-Mickey Mouse           | gnw_mmouse
-Mickey Mouse           | gnw_mmousep
-Octopus                | gnw_octopus
-Parachute              | gnw_pchute 
-Popeye                 | gnw_popeye
-Popeye                 | gnw_popeyep 
-Super Mario Bros.      | gnw_smb 
-Snoopy                 | gnw_snoopyp 
-Snoopy Tennis          | gnw_stennis 
-Turtle Bridge          | gnw_tbridge 
-Tropical Fish          | gnw_tfish 
-Vermin                 | gnw_vermin
+Game Name                          | ROM Name
+---------------------------------- | -----------
+Ball                               | gnw_ball
+Balloon Fight (Crystal)            | gnw_bfight
+Chef                               | gnw_chef 
+Climber (Crystal)                  | gnw_climber 
+Donkey Kong Jr.                    | gnw_dkjr 
+Donkey Kong Jr. (Panorama)         | gnw_dkjrp
+Fire                               | gnw_fire 
+Fire Attack                        | gnw_fireatk 
+Fire                               | gnw_fires 
+Flagman                            | gnw_flagman 
+Helmet                             | gnw_helmet
+Judge                              | gnw_judge 
+Lion                               | gnw_lion
+Manhole                            | gnw_manhole 
+Manhole (Gold)                     | gnw_manholeg
+Mario's Cement Factory             | gnw_mariocm
+Mario's Cement Factory (Table-Top) | gnw_mariocmt
+Mario the Juggler                  | gnw_mariotj
+Mario's Bombs Away                 | gnw_mbaway
+Mickey Mouse                       | gnw_mmouse
+Mickey Mouse (Panorama)            | gnw_mmousep
+Octopus                            | gnw_octopus
+Parachute                          | gnw_pchute 
+Popeye                             | gnw_popeye
+Popeye (Panorama)                  | gnw_popeyep 
+Super Mario Bros. (Crystal)        | gnw_smb 
+Snoopy (Panorama)                  | gnw_snoopyp 
+Snoopy Tennis                      | gnw_stennis 
+Turtle Bridge                      | gnw_tbridge 
+Tropical Fish                      | gnw_tfish 
+Vermin                             | gnw_vermin
 
 Those are single screen games, for DIY dual screen implementation see the [parent project](https://github.com/slowlane112/Esp32-Game-and-Watch).
 
@@ -68,7 +68,7 @@ https://github.com/bzhxx/LCD-Game-Shrinker
 
 Below is a link to a guide describing how to use LCD-Game-Shrinker to generate the shrunk roms.
 
-https://gist.github.com/DNA64/16fed499d6bd4664b78b4c0a9638e4ef
+https://gist.github.com/DNA64/16fed499d6bd4664b78b4c0a9638e4ef ([local copy](LCD-Game-Shrinker-Guide.md))
 
 ⚠️ Requirements from this guide are very tight with OS/software versions: Ubuntu 20.04, Inkscape 1.1, and the MAME rom archive 0.229 is ~68GB.
 
