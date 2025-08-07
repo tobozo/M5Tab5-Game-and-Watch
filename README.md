@@ -108,7 +108,7 @@ If using a SD card, put the resized jpg files in the `/artworks` folder, if usin
 
 - Open Arduino IDE
 - Install [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) library and apply the [fix for M5Tab5](https://github.com/tanakamasayuki/EspUsbHost/issues/18)
-- Install those additional libraries: 
+- Clone those additional libraries (don't use the library manager, some of those are outdated in the registry): 
   - [M5GFX](https://github.com/M5Stack/M5GFX)
   - [M5Unified](https://github.com/M5Stack/M5Unified)
   - [ESP32-targz](https://github.com/tobozo/ESP32-targz)
@@ -117,6 +117,10 @@ If using a SD card, put the resized jpg files in the `/artworks` folder, if usin
 - Compile and flash
 - Optional (if not using the SD card): use the sketch data upload utility to upload the roms/artworks
 
+
+## Known bugs
+- https://github.com/tanakamasayuki/EspUsbHost/issues/18
+- https://github.com/Industrial-Shields/arduino-BufferStream/issues/1
 
 
 ## Credits/Acknowledgements
