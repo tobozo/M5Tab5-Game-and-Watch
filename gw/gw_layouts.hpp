@@ -41,6 +41,12 @@ namespace GW
   // Game & Watch single screen layouts, with their respective buttons layouts
 
 
+  // NWS : 560x360
+  // GS:   464x308
+  // SS:   443:283
+  // WS:   560:360
+
+
   namespace SILVER_SCREEN
   {
     // Game/Time/Alarm/ACL bottom middle

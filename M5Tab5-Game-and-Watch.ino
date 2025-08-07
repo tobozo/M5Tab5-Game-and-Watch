@@ -37,6 +37,7 @@
  *  - MAME ROM/Artwork importer+shrinker+packer
  *  - Auto sleep / screen dim / wake on touch
  *  - Joystick/Keyboard calibration
+ *  - Enable/disable debug (show_fps)
  *
  * */
 
@@ -72,7 +73,7 @@ static bool buffer_ready = false; // notify video task that a frame is ready to 
 // select a more realistic refresh rate. NOTE: real refresh rate will be approximated from this
 static const uint32_t target_fps = 16; // must be a divisor of GW_REFRESH_RATE and a power of 2 while being sustainable by the display, not so many choices :)
 // frames to skip e.g. if GW_REFRESH_RATE is 128Hz and target_fps is 16, blit every (128/16=8) frames instead of every frame
-static const uint32_t blitCount = GW_REFRESH_RATE/target_fps;
+static const uint32_t blitCount = (GW_REFRESH_RATE/target_fps);
 // microseconds per Game&Watch system cycle
 static const float us_per_cycle = (1000.0f*1000.0f)/float(GW_SYS_FREQ);
 // milliseconds per call to gw_system_run(GW_SYSTEM_CYCLES), one "game tick"
@@ -279,7 +280,8 @@ bool load_game(uint8_t gameid)
   //M5.Speaker.stop();
   gw_system_blit(gw_fb);
 
-  //kbd_debugger.printKeyboard(gw_keyboard);
+  if( debug_buttons )
+    kbd_debugger.printKeyboard(gw_keyboard);
 
   // 320x200 emulator panel will be stretched to fit in the innerview
   zoomx = float(gamePtr->view.innerbox.w)/float(GW_SCREEN_WIDTH);
@@ -300,8 +302,9 @@ bool load_game(uint8_t gameid)
   previd = gameid;
 
   // // Debug touch buttons and view
-  for( int i=0;i<gamePtr->btns_count;i++)
-    drawBounds(&(gamePtr->btns[i]));
+  if( debug_buttons )
+    for( int i=0;i<gamePtr->btns_count;i++)
+      drawBounds(&(gamePtr->btns[i]));
   tft.drawRect(gamePtr->view.innerbox.x-1, gamePtr->view.innerbox.y-1, gamePtr->view.innerbox.w+2, gamePtr->view.innerbox.h+2, TFT_RED);
   return true;
 }
@@ -370,26 +373,9 @@ int get_menu_gesture()
   };
   size_t optionButtonsCount = sizeof(OptionButtons)/sizeof(GWTouchButton);
 
-//  for( int i=0;i<optionButtonsCount;i++) {
-//     drawBounds(&OptionButtons[i]);
-//
-//     auto box = OptionButtons[i].getBox();
-//     alphaSprite.createSprite(box.w,box.h);
-//     int buffer_size = box.w*box.h*2;
-//     auto buffer16 = (lgfx::rgb565_t*)ps_malloc(buffer_size);
-//     auto buffer32 = (lgfx::argb8888_t*)alphaSprite.getBuffer();
-//     canvas.readRect(box.x, box.y, box.w, box.h, buffer16);
-//     for(int j=0;j<box.w*box.h;j++) {
-//       lgfx::rgb565_t color16 = buffer16[j];
-//       lgfx::argb8888_t color32 { 0xff, color16.R8(), color16.G8(), color16.B8() };
-//       buffer32[j] = color32;
-//     }
-//     alphaSprite.fillCircle((box.w/2)-1, (box.h/2)-1, box.w/4, (lgfx::argb8888_t)0x80808080u);
-//     canvas.pushAlphaImage(box.x, box.y, box.w, box.h, buffer32 );
-//     // alphaSprite.pushSprite(box.x, box.y); // will it blend ?
-//     alphaSprite.deleteSprite();
-//     free(buffer16);
-//  }
+  if( debug_buttons )
+    for( int i=0;i<optionButtonsCount;i++)
+      drawBounds(&OptionButtons[i]);
 
   drawVolume(0, 0, 200, 48);
   tft.drawJpg(save_rtc_jpg, save_rtc_jpg_len, 300, 0);
@@ -585,17 +571,12 @@ unsigned int gw_get_buttons()
 
 void gameLoop()
 {
-  static int display_update_count = 0;
-
   gameCycle();
 
-  display_update_count++;
-
-  if (display_update_count == blitCount) {
+  if (!buffer_ready) { // gw_fb has been sent
+    //std::lock_guard<std::mutex> lck(tft_mtx);
     gw_system_blit(gw_fb);
-    std::lock_guard<std::mutex> lck(tft_mtx);
     buffer_ready = true; // buffer readiness signal for video task
-    display_update_count = 0;
   }
 }
 
@@ -606,18 +587,18 @@ void videoBufferTask(void*param)
   while(1)
   {
     if( buffer_ready ) {
+      //std::lock_guard<std::mutex> lck(tft_mtx);
       auto game = GWGames[currentGame];
       tft.pushImageRotateZoom(game->view.innerbox.x, game->view.innerbox.y, 0, 0, 0.0, zoomx, zoomy, GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT, gw_fb);
-      std::lock_guard<std::mutex> lck(tft_mtx);
-      buffer_ready = false;
       if( show_fps ) {
         fpsCounter.addFrame();
         tft.setCursor(0,tft.height()-1);
         tft.setTextDatum(BL_DATUM);
         tft.setFont(&FreeSansBold18pt7b);
         tft.setTextSize(1);
-        tft.printf("%.2f fps ", fpsCounter.getFps() );
+        tft.printf("[%d:%d] @ %.2f fps ", (int)game->view.innerbox.w, (int)game->view.innerbox.h, fpsCounter.getFps() );
       }
+      buffer_ready = false;
     }
     vTaskDelay(1);
   }

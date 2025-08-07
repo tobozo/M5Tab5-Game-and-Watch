@@ -23,7 +23,9 @@
 
 
 std::mutex tft_mtx;
-static bool show_fps = false;
+
+static bool show_fps = true;
+static bool debug_buttons = false; // true;
 
 static uint16_t *vCopyBuff = nullptr;
 static uint16_t *hCopyBuff = nullptr;
@@ -455,3 +457,26 @@ void drawBuffer(uint8_t* data, uint32_t len)
     }
   }
 }
+
+
+//  transparent buttons
+//  {
+//     auto box = {x, y, w, h};
+//     if( !alphaSprite.createSprite(box.w,box.h) )
+//       return;
+//     int buffer_size = box.w*box.h*2;
+//     auto buffer16 = (lgfx::rgb565_t*)ps_malloc(buffer_size);
+//     auto buffer32 = (lgfx::argb8888_t*)alphaSprite.getBuffer();
+//     canvas.readRect(box.x, box.y, box.w, box.h, buffer16);
+//     for(int j=0;j<box.w*box.h;j++) {
+//       lgfx::rgb565_t color16 = buffer16[j];
+//       lgfx::argb8888_t color32 { 0xff, color16.R8(), color16.G8(), color16.B8() };
+//       buffer32[j] = color32;
+//     }
+//     // draw transparent stuff
+//     alphaSprite.fillCircle((box.w/2)-1, (box.h/2)-1, box.w/4, (lgfx::argb8888_t)0x80808080u);
+//     canvas.pushAlphaImage(box.x, box.y, box.w, box.h, buffer32 );
+//     // alphaSprite.pushSprite(&canvas, box.x, box.y); // works too but slower
+//     alphaSprite.deleteSprite();
+//     free(buffer16);
+//  }

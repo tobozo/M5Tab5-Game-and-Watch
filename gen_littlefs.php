@@ -19,6 +19,7 @@
 $magickDir = '/tmp/artworks';
 // LCD-Game-Shrinker path, cloned in the current directory
 $LCDShrinkerDir = getCWD().'/LCD-Game-Shrinker';
+$SPIFFSDataDir = getCWD().'/data';
 // list of roms to shrink (same as rom names in MAME archive, but without the "gnw_" prefix)
 // NOTE: those are single-display games!
 $games = [
@@ -55,27 +56,28 @@ $gamesByRomName = [
 // Most game images can be guessed from the default.lay file in MAME archive, except for those
 $imagesByRomName = [
   'ball'     => '/gnw_ball/original/AC-01.png',
-  'bfight'   => '/new-wide-screen-bfight.png', // substitute
+  'bfight'   => '/../../generic/new-wide-screen-bfight.png', // substitute
   'cgrab'    => '/gnw_cgrab/original/Unit.png',
-  'climber'  => '/new-wide-screen-climber.png', // substitute
+  'climber'  => '/../../generic//new-wide-screen-climber.png', // substitute
   'dkjr'     => '/gnw_dkjr/original/DJ-101.png',
-  'dkjrp'    => '/new-wide-screen-5-buttons-dkjrp.png',
+  'dkjrp'    => '/../../generic/new-wide-screen-5-buttons-dkjrp.png',
   'fireatk'  => '/gnw_fireatk/original/ID-29.png',
   'fires'    => '/gnw_fires/original/RC-04.png',
   'helmet'   => '/gnw_helmet/original/CN-07.png',
   'lion'     => '/gnw_lion/original/Unit.png',
+  'manhole'  => '/gnw_manhole/original/NH-103.png',
   'manholeg' => '/gnw_manholeg/original/Unit.png',
   'mariocm'  => '/gnw_mariocm/original/ML-102.png',
-  'mariocmt' => '/wide-screen-3-buttons-mariocmt.png', // substitute
+  'mariocmt' => '/../../generic/wide-screen-3-buttons-mariocmt.png', // substitute
   'mariotj'  => '/gnw_mariotj/original/Unit.png',
-  'mbaway'   => '/new-wide-screen-3-buttons-generic.png', // substitute
+  'mbaway'   => '/../../generic/new-wide-screen-3-buttons-generic.png', // substitute
   'mmouse'   => '/gnw_mmouse/original/MC-25.png',
-  'mmousep'  => '/wide-screen-from-panoramic-mmousep.png', // substitute
+  'mmousep'  => '/../../generic/wide-screen-from-panoramic-mmousep.png', // substitute
   'octopus'  => '/gnw_octopus/original/OC-22.png',
-  'popeyep'  => '/new-wide-screen-popeyep.png', // substitute
+  'popeyep'  => '/../../generic/new-wide-screen-popeyep.png', // substitute
   'pchute'   => '/gnw_pchute/original/PR-21.png',
-  'smb'      => '/new-wide-screen-smb.png', // substitute
-  'snoopyp'  => '/new-wide-screen-snoopyp.png', // substitute
+  'smb'      => '/../../generic/new-wide-screen-smb.png', // substitute
+  'snoopyp'  => '/../../generic/new-wide-screen-snoopyp.png', // substitute
   'stennis'  => '/gnw_stennis/original/SP-30.png',
   'tfish'    => '/gnw_tfish/original/TF-104.png',
   'vermin'   => '/gnw_vermin/original/MT-03.png'
@@ -90,7 +92,10 @@ $gameslist = [];
 
 // temp folder for imagemagick
 if(!is_dir($magickDir))
-  mkdir($magickDir, 0777, true) or die("Unable to create dir $magickDir");
+  mkdir($magickDir, 0777, true) or die("Unable to create ImageMagick temporary dir: $magickDir");
+
+if(!is_dir($SPIFFSDataDir))
+  mkdir($SPIFFSDataDir, 0777, true) or die("Unable to create LittleFS dir: $SPIFFSDataDir");
 
 if(!is_dir($LCDShrinkerDir) || !is_dir($buildRoot)) {
   // if(!is_dir($buildRoot)) {
@@ -336,10 +341,10 @@ foreach($games as $game) {
   $pngartwork = $magickDir.'/gnw_'.$game.'.png';
 
   $jpgartwork = 'gnw_'.$game.'.jpg';
-  $gzjpgartwork = '../data/gnw_'.$game.'.jpg.gz';
+  $gzjpgartwork = $SPIFFSDataDir.'/gnw_'.$game.'.jpg.gz';
 
   $gwrom = 'gnw_'.$game.'.gw';
-  $gzgwrom = '../data/gnw_'.$game.'.gw.gz';
+  $gzgwrom = $SPIFFSDataDir.'/gnw_'.$game.'.gw.gz';
 
   $buildPath  = $buildRoot.'/gnw_'.$game;
   $originalPath = $buildPath.'/original';
@@ -382,7 +387,7 @@ foreach($games as $game) {
 
   if( isset($imagesByRomName[$game]) && file_exists($buildRoot.$imagesByRomName[$game]) ) {
     copy($buildRoot.$imagesByRomName[$game], "$pngartwork");
-    if( preg_match("/generic/", $imagesByRomName[$game] ) )
+    if( preg_match("/generic/", basename($imagesByRomName[$game] )) )
       $isGeneric = true;
   } else if(!file_exists($pngartwork)) {
 
