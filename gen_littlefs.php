@@ -91,15 +91,17 @@ if(PHP_OS_FAMILY=='Windows') {
 //  exec('magick /?', $out) or die('Imagemagick not found');
   exec('gzip /?', $out) or die('gzip not found');
   $delCmd = "del";
+  $magickDir = 'tmp/artworks';
 } else {
   exec('magick --help', $out) or die('Imagemagick not found');
   exec('gzip --help', $out) or die('gzip not found');
   exec('rm --help', $out) or die('rm command not found');
   $delCmd = "rm";
+  $magickDir = '/tmp/artworks';
 }
 
 // temporary dir for imagemagick, no trailing slash
-$magickDir = '/tmp/artworks';
+
 // LCD-Game-Shrinker path, cloned in the current directory
 $LCDShrinkerDir = getCWD().'/LCD-Game-Shrinker';
 // list of roms to shrink (same as rom names in MAME archive, but without the "gnw_" prefix)
