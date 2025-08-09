@@ -14,7 +14,6 @@
  *
  * */
 
-
 // LittleFS data folder path (or SD card), where the final compressed roms/artworks will be saved
 $ExportDir = getCWD().'/data';
 $RomExportDir = $ExportDir;
@@ -86,21 +85,9 @@ function game($game_id)
 }
 
 
-if(PHP_OS_FAMILY=='Windows') {
-  exec('del /?', $out) or die('del command not found');
-//  exec('magick /?', $out) or die('Imagemagick not found');
-  exec('gzip /?', $out) or die('gzip not found');
-  $delCmd = "del";
-  $magickDir = 'tmp/artworks';
-} else {
-  exec('magick --help', $out) or die('Imagemagick not found');
-  exec('gzip --help', $out) or die('gzip not found');
-  exec('rm --help', $out) or die('rm command not found');
-  $delCmd = "rm";
-  $magickDir = '/tmp/artworks';
-}
-
 // temporary dir for imagemagick, no trailing slash
+
+$tmpDir = getCWD().'/tmp/artworks';
 
 // LCD-Game-Shrinker path, cloned in the current directory
 $LCDShrinkerDir = getCWD().'/LCD-Game-Shrinker';
@@ -129,10 +116,14 @@ $GwTouchButtons    = [];
 $GwTouchButtonsSet = [];
 $gameslist = [];
 
+// support for image creation
+//extension_loaded("gd") or die("Enable gd extension in php.ini!!".PHP_EOL);
+exec("magick -help") or die("imagemagick not found".PHP_EOL);
 
-// temp folder for imagemagick
-if(!is_dir($magickDir))
-  mkdir($magickDir, 0777, true) or die("Unable to create ImageMagick temporary dir: $magickDir");
+
+// temp folder for images
+if(!is_dir($tmpDir))
+  mkdir($tmpDir, 0777, true) or die("Unable to create temporary dir: $tmpDir");
 // dest folder(s) for final export
 if(!is_dir($ExportDir))
   mkdir($ExportDir, 0777, true) or die("Unable to create ExportDir: $ExportDir");
@@ -160,7 +151,7 @@ if(!is_dir($LCDShrinkerDir) || !is_dir($LCDShrinkerBuildDir)) {
 }
 
 // sort games alphabetically
-asort($games);
+//asort($games);
 
 // some control port names to help with filtering
 $controlPorts = ['IPT_UNUSED', 'IPT_SELECT', 'IPT_START1', 'IPT_START2', 'IPT_SERVICE1', 'IPT_SERVICE2'];
@@ -184,7 +175,9 @@ for($l=0;$l<count($mameClassLines);$l++)
 
   $romshortname = str_replace("gnw_", "", $romname);
 
-  if(!in_array($romshortname, $games)) {
+  //if(!in_array($romshortname, $games))
+  if(!isset($gamesMap[$romshortname]))
+  {
     while(trim($mameClassLines[$l])!='INPUT_PORTS_END' && $l<count($mameClassLines))
       $l++; // jump to closing tag
     continue;
@@ -239,7 +232,7 @@ foreach($gamesMap as $game => $ary)
   $artwork   = $gameAry['artwork_path'];
 
   // temp source file name
-  $pngartwork = $magickDir.'/gnw_'.$game.'.png';
+  $pngartwork = $tmpDir.'/gnw_'.$game.'.png';
 
   // dst jpg filename and its gzname
   $jpgartwork = 'gnw_'.$game.'.jpg';
@@ -274,14 +267,14 @@ foreach($gamesMap as $game => $ary)
     $cmd = sprintf("python3 %s/shrink_it.py input/rom/gnw_%s.zip\n", $LCDShrinkerDir, $game);
     die("That rom was not build: $gwrom, you can build it using the following command:".PHP_EOL.$cmd.PHP_EOL);
   }
-  copy("$LCDShrinkerGameBuildDir/$gwrom", $gwrom);
+  copy("$LCDShrinkerGameBuildDir/$gwrom", $tmpDir.'/'.$gwrom);
 
   $optionalCmd = "";
   if( $isGeneric ) { // compose game title into the generic artwork
     if( PHP_OS_FAMILY!='Windows' ) { // Unless it's windows :D
       $optionalCmd = sprintf('textpos=%s && magick %s -font \'%s\' -fill \'%s\' -pointsize %d -gravity center -annotate %s "%s" %s',
         '$(magick '.$jpgartwork.' -format "+0-%[fx:int(h*0.33)]" info:)', // NOTE: this is a linux shell command
-        $jpgartwork,
+        $tmpDir.'/'.$jpgartwork,
         "DejaVu-Sans",  // $font,
         "#202020", // $fillColor
         20, // $pointSize,
@@ -292,26 +285,48 @@ foreach($gamesMap as $game => $ary)
     }
   }
 
-  $cmds = [
-    sprintf('magick %s -resize %s -size %s -quality %d %s', $pngartwork, $artworkSize, $artworkSize, $artworkQuality, $jpgartwork), // shrink the artwork, downsize+compress
-    $optionalCmd,
-    sprintf("gzip -c %s > %s",  $gwrom,      $gzgwrom),
-    sprintf("gzip -c %s > %s",  $jpgartwork, $gzjpgartwork),
-    sprintf("%s %s", $delCmd, $gwrom),
-    sprintf("%s %s", $delCmd, $jpgartwork),
-    sprintf("%s %s", $delCmd, $pngartwork)
-  ];
+  // list( $dstwidth, $dstheight ) = explode("x", $artworkSize); // dst
+  // list( $srcwidth, $srcheight ) = getimagesize($pngartwork);    // src
+  //
+  // $multiplier = min( $dstwidth/$srcwidth, $dstheight/$srcheight );
+  // $dstwidth  = (int)($srcwidth*$multiplier);
+  // $dstheight = (int)($srcheight*$multiplier);
+  //
+  // // echo sprintf("[$srcwidth:$srcheight] * %.2f = [%d:%d]".PHP_EOL, $multiplier, $srcwidth*$multiplier, $srcheight*$multiplier);
+  //
+  // $imgsrc = @imagecreatefrompng($pngartwork);
+  // $imgdst = imagecreatetruecolor($dstwidth, $dstheight);
+  //
+  // imagecopyresampled($imgdst, $imgsrc, 0, 0, 0, 0, $dstwidth, $dstheight, $srcwidth, $srcheight);
 
-  foreach($cmds as $cmd)
-  {
-    if(empty($cmd))
-      continue;
-    $out = [];
-    exec($cmd, $out);
-    if(!empty($out)) {
-      print_r($out);
-    }
+
+  $cmd = sprintf('magick %s -resize %s -size %s -quality %d %s', $pngartwork, $artworkSize, $artworkSize, $artworkQuality, $tmpDir.'/'.$jpgartwork); // shrink the artwork, downsize+compress
+  exec($cmd, $out);
+
+
+  if($isGeneric) {
+    // TODO: add text
+    // list($left, $bottom, $right, , , $top) = imageftbbox($font_size, $angle, $font, $text);
+    // Imagettftext($imgdst, ($right - $left) / 2, $dstheight*0.33, $start_x, $start_y, $black, 'verdana.ttf', "text to write");
   }
+
+  //echo imageresolution($imgsrc)[0].PHP_EOL;
+  //imageresolution($imgsrc, 300);
+
+  // fuck that, imagejpeg is unable to produce a consistent result between windows and linux (windows images are bigger)
+  // imagejpeg($imgdst, $tmpDir.'/'.$jpgartwork, 80);
+
+  // gzip'em all
+  foreach([$tmpDir.'/'.$gwrom=>$gzgwrom, $tmpDir.'/'.$jpgartwork=>$gzjpgartwork] as $src=>$dst)
+  {
+    $data = file_get_contents($src) or die("File $src is unreadable".PHP_EOL);
+    $gzdata = gzencode($data, 9);
+    file_put_contents($dst, $gzdata) or die("File $dst can't be saved".PHP_EOL);
+  }
+
+  @unlink($tmpDir.'/'.$gwrom);
+  @unlink($tmpDir.'/'.$jpgartwork);
+  @unlink($pngartwork);
 
   $controls = $gameAry['controls'];
   $inputs   = $gameAry['inputs'];
