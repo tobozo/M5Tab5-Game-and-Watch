@@ -15,8 +15,8 @@
 #include <ESP32-targz.h>  // https://github.com/tobozo/ESP32-targz
 
 
-#define GW_ARTWORKS_DIR "/artworks"
 #define GW_ROMS_DIR     "/roms"
+#define GW_ARTWORKS_DIR "/artworks"
 
 
 static fs::FS* gwFS = nullptr;//&LittleFS;
@@ -40,18 +40,18 @@ void initLittleFS()
 
 void initSDCard()
 {
-  Serial.println("SD_MMC Start...");
+  // Serial.println("SD_MMC Start...");
   if (!SD_MMC.begin("/sdcard", false)) {  // false = 4-bit mode
-    Serial.println("SD_MMC 4bit mode not available");
+    // Serial.println("SD_MMC 4bit mode not available");
     if (!SD_MMC.begin("/sdcard", true)) {  // true = 1-bit mode
       Serial.println("SD_MMC 1 bit mode not available");
       sdcard_ok = false;
       return;
     } else {
-      Serial.println("SD_MMC 1 bit mode available");
+      // Serial.println("SD_MMC 1 bit mode available");
     }
   } else {
-    Serial.println("SD_MMC 4 bit mode available");
+    // Serial.println("SD_MMC 4 bit mode available");
   }
 
   uint8_t cardType = SD_MMC.cardType();
@@ -62,19 +62,19 @@ void initSDCard()
   }
 
   sdcard_ok = true;
-  Serial.print("SD Cart type: ");
-  if (cardType == CARD_MMC) {
-    Serial.println("MMC");
-  } else if (cardType == CARD_SD) {
-    Serial.println("SDSC");
-  } else if (cardType == CARD_SDHC) {
-    Serial.println("SDHC");
-  } else {
-    Serial.println("UNKNOWN");
-  }
-
-  uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024 * 1024);
-  Serial.println("SD size: " + String(cardSize) + "GB");
+  // Serial.print("SD Card type: ");
+  // if (cardType == CARD_MMC) {
+  //   Serial.print("MMC ");
+  // } else if (cardType == CARD_SD) {
+  //   Serial.print("SDSC ");
+  // } else if (cardType == CARD_SDHC) {
+  //   Serial.print("SDHC ");
+  // } else {
+  //   Serial.print("UNKNOWN ");
+  // }
+  //
+  // uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024 * 1024);
+  // Serial.println(", size: " + String(cardSize) + "GB");
 }
 
 
@@ -141,7 +141,7 @@ bool expand_asset(GWFile *asset, Stream* gzStream, uint32_t gzlen)
     return false;
   }
 
-  unsigned char * gzdata = (unsigned char *)ps_malloc(gzlen);
+  unsigned char * gzdata = (unsigned char *)ps_malloc(gzlen+1);
   if(!gzdata) {
     tft_error("Malloc error (%d bytes)", (int)gzlen);
     return false;

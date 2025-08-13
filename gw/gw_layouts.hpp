@@ -40,19 +40,12 @@ namespace GW
 
   // Game & Watch single screen layouts, with their respective buttons layouts
 
-
-  // NWS : 560x360
-  // GS:   464x308
-  // SS:   443:283
-  // WS:   560:360
-
-
   namespace SILVER_SCREEN
   {
     // Game/Time/Alarm/ACL bottom middle
     // logo top left
     // 2 different button layouts
-    GWLayout SSLay = {.name="Silver Screen", .innerbox={.x=0.292135, .y=0.255556, .w=0.415730, .h=0.394444}};
+    GWLayout SSLay = {.name="Silver Screen", .innerbox={.x=0.292134831461, .y=0.255555555556, .w=0.422, .h=0.4}};
 
     GWTouchButton SSGAW(   "SSGAW",   0.071161, 0.130556, 0.116105, 0.152778, GW_BUTTON_GAW, KEY_ESC); // nintendo logo
     GWTouchButton SSGameA( "SSGameA", 0.473783, 0.825000, 0.086142, 0.086111, GW_BUTTON_GAME, KEY_F1);
@@ -117,7 +110,7 @@ namespace GW
     // Game/Time/Alarm/ACL top right
     // logo top left
     // 3 different button layouts
-    GWLayout WSLay = {.name="Wide Screen", .innerbox={.x=0.267112, .y=0.250000, .w=0.467446, .h=0.500000}};
+    GWLayout WSLay = {.name="Wide Screen", .innerbox={.x=0.267112, .y=0.25, .w=0.48, .h=0.5}};
 
     GWTouchButton WSGAW(   "WSGAW",   0.043406, 0.158333, 0.123539, 0.172222, GW_BUTTON_GAW, KEY_ESC); // nintendo logo
     GWTouchButton WSGameA( "WSGameA", 0.834725, 0.097222, 0.071786, 0.077778, GW_BUTTON_GAME, KEY_F1);
@@ -157,7 +150,7 @@ namespace GW
     // Game/Time/Alarm/ACL top right
     // logo top left
     // 4 different button layouts
-    GWLayout NWSLay = {.name="New Wide Screen", .innerbox={.x=0.267112, .y=0.250000, .w=0.467446, .h=0.500000}};
+    GWLayout NWSLay = {.name="New Wide Screen", .innerbox={.x=0.264214046823, .y=0.25, .w=0.471571906355, .h=0.497222222222}};
 
     GWTouchButton NWSGAW(   "NWSGAW",   0.051753, 0.144444, 0.123539, 0.175000, GW_BUTTON_GAW, KEY_ESC); // nintendo logo
     GWTouchButton NWSGameA( "NWSGameA", 0.834725, 0.097222, 0.071786, 0.077778, GW_BUTTON_GAME, KEY_F1);
@@ -225,11 +218,6 @@ namespace GW
     auto CS5Right   = NWS5Right ;
     auto CS5Button1 = NWS5Button1;
   };
-
-
-
-
-
 
   using namespace SILVER_SCREEN;
   using namespace GOLD_SCREEN;

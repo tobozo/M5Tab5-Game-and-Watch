@@ -13,34 +13,62 @@
 #include "./gw_games.hpp"
 #include "../assets/icons.h"
 
+
 #define M5GFX_BOARD board_M5Tab5
 #include <M5Unified.hpp>  // https://github.com/m5stack/M5Unified
-// #include <M5Tab5.h> // https://github.com/felmue/M5Tab5
-#include "./time_utils.hpp"
-
 #define tft M5.Display
+#include <lgfx/v1/platforms/esp32p4/Panel_DSI.hpp>
+#include "./time_utils.hpp"
+#include "./ppa_utils.hpp"
+
+struct fpsCounter_t
+{
+  uint32_t last_frame = 0;
+  float fps = 0;
+  float avgms = 0;
+  float frames_count = 0;
+  float ms_count = 0;
+  void addFrame()
+  {
+    uint32_t now = millis();
+    if( last_frame == 0 )
+      last_frame = now;
+    auto elapsed = now-last_frame;
+    last_frame = millis();
+    frames_count++;
+    ms_count += elapsed;
+    if( frames_count>0 && ms_count>=1000.0f ) {
+      avgms = ms_count/frames_count;
+      frames_count = 0;
+      ms_count     = 0;
+    }
+  }
+  float getFps() { return avgms!=0 ? 1000.f/avgms : 0; }
+} fpsCounter;
+
+const char* GFX_TAG = "GW Utils";
+
+GWBox GWFBBox(0,0,GW_SCREEN_WIDTH,GW_SCREEN_HEIGHT);
 
 
-
-std::mutex tft_mtx;
-
-static bool show_fps = true;
+static bool show_fps = false;
 static bool debug_buttons = false; // true;
+static bool debug_gestures = false;
 
+// for pushSpriteTransition reveal effect
 static uint16_t *vCopyBuff = nullptr;
 static uint16_t *hCopyBuff = nullptr;
 
 LGFX_Sprite canvas(&tft); // jpeg game background holder
 LGFX_Sprite dim(&tft);    // semi transparent overlay to dim background
-LGFX_Sprite copyBuf(&tft);
 LGFX_Sprite textBox(&tft);
-LGFX_Sprite alphaSprite(&tft);
+LGFX_Sprite GWSprite(&tft);
 
 static uint16_t *gw_fb; // Game&Watch framebuffer @16bpp
 const uint32_t fbsize = GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * sizeof(uint16_t);
 
-static float zoomx = 1.0f; // framebuffer to canvas zoom ratio
-static float zoomy = 1.0f; // framebuffer to canvas zoom ratio
+static double zoomx = 1.0f; // framebuffer to canvas zoom ratio
+static double zoomy = 1.0f; // framebuffer to canvas zoom ratio
 
 static std::vector<GWGame*> GWGames;
 
@@ -52,6 +80,18 @@ static const uint16_t volume_increment = 2048; // ~16 levels
 
 RGBColor heatMapColors[] = { {0, 0xff, 0}, {0xff, 0xff, 0}, {0xff, 0x80, 0}, {0xff, 0, 0} }; // green => yellow => orange => red
 
+
+void handleFps()
+{
+  if( show_fps ) {
+    GWSprite.setCursor(0,GWSprite.height()-1);
+    GWSprite.setTextDatum(BL_DATUM);
+    GWSprite.setFont(&FreeSansBold9pt7b);
+    GWSprite.setTextColor(TFT_WHITE);
+    GWSprite.setTextSize(1);
+    GWSprite.printf("%.2f fps ", fpsCounter.getFps() );
+  }
+}
 
 void debugTouchState(m5::touch_state_t state)
 {
@@ -73,7 +113,7 @@ void debugTouchState(m5::touch_state_t state)
     , "drag_end"
     , "drag_begin"
   };
-  Serial.printf("%s\n", state_name[state]);
+  ESP_LOGD(GFX_TAG, "TouchState: %s", state_name[state]);
 }
 
 
@@ -92,12 +132,14 @@ void tft_error(const char * format, ...)
 {
   va_list args;
   va_start (args, format);
+  //tft.endWrite();
   tft.clear();
   tft.setFont(&FreeSansBold24pt7b);
   tft.setTextSize(2);
   tft.setTextColor(TFT_RED);
   tft.setCursor(0, tft.height()/2);
   tft.printf(format, args);
+  //tft.startWrite();
   Serial.printf(format, args);
   Serial.println();
   va_end (args);
@@ -157,7 +199,7 @@ bool get_jpeg_size(unsigned char* data, unsigned int data_size, uint32_t *width,
   //int i=0;   // Keeps track of the position within the file
   // Check for valid JPEG file (SOI Header)
   if(data[0] != 0xFF || data[1] != 0xD8 || data[2] != 0xFF || data[3] != 0xE0) {
-    Serial.println("Not a valid SOI header");
+    ESP_LOGE(GFX_TAG, "Not a valid SOI header");
     return false;
   }
 
@@ -165,7 +207,7 @@ bool get_jpeg_size(unsigned char* data, unsigned int data_size, uint32_t *width,
 
   // Check for valid JPEG header (null terminated JFIF)
   if(data[6] != 'J' || data[7] != 'F' || data[8] != 'I' || data[9] != 'F' || data[10] != 0x00) { // Not a valid JFIF string
-    Serial.println("Not a valid JFIF string");
+    ESP_LOGE(GFX_TAG, "Not a valid JFIF string");
     return false;
   }
 
@@ -188,7 +230,7 @@ bool get_jpeg_size(unsigned char* data, unsigned int data_size, uint32_t *width,
       block_length = data[i] * 256 + data[i+1];   //Go to the next block
     }
   }
-  Serial.println("Size not found");
+  ESP_LOGE(GFX_TAG, "Size not found");
   return false;
 }
 
@@ -209,29 +251,29 @@ void pushSpriteTransition( LGFX_Sprite* dst, int direction=0 )
 {
   uint16_t breadth = 16; // copybuff breadth
 
-  if(dst->width()%breadth!=0 || dst->height()%breadth!=0) {
+  if(!vCopyBuff)
+    vCopyBuff = (uint16_t *)ps_malloc(breadth*tft.height()*sizeof(uint16_t));
+  if(!hCopyBuff)
+    hCopyBuff = (uint16_t *)ps_malloc(breadth*tft.width()*sizeof(uint16_t));
+
+  if(!vCopyBuff || !hCopyBuff || dst->width()%breadth!=0 || dst->height()%breadth!=0) {
     dst->pushSprite(0,0);
     return;
   }
 
-  if(!vCopyBuff)
-    vCopyBuff = (uint16_t *)ps_malloc(breadth*dst->width());
-  if(!hCopyBuff)
-    hCopyBuff = (uint16_t *)ps_malloc(breadth*dst->height());
-
-  if( direction==0 ) {
+  if( direction==0 ) { // top to bottom
     auto chunks = dst->height()/breadth;
     for (int chunk=0,y=0;chunk<chunks;chunk++,y=chunk*breadth) {
       dst->readRect(0, y, dst->width(), breadth, hCopyBuff);
       tft.pushImage(0, y, dst->width(), breadth, hCopyBuff);
     }
-  } else if( direction > 0 ) {
+  } else if( direction > 0 ) { // right to left
     auto chunks = dst->width()/breadth;
     for(int chunk=chunks-1, x=(chunks-1)*breadth;chunk>=0;chunk--,x=chunk*breadth) {
       dst->readRect(x, 0, breadth, dst->height(), vCopyBuff);
       tft.pushImage(x, 0, breadth, dst->height(), vCopyBuff);
     }
-  } else {
+  } else { // left to right
     auto chunks = dst->width()/breadth;
     for(int chunk=0,x=0;chunk<chunks;chunk++,x=chunk*breadth) {
       dst->readRect(x, 0, breadth, tft.height(), vCopyBuff);
@@ -244,7 +286,6 @@ void pushSpriteTransition( LGFX_Sprite* dst, int direction=0 )
 void dim_view(int sparsity = 2)
 {
   auto game = GWGames[currentGame];
-  //auto view = game.view;
 
   dim.createSprite(game->view.innerbox.w, sparsity);
   dim.fillSprite(TFT_BLACK);
@@ -298,10 +339,10 @@ void extrudeShadow(GFX* dst, String text, uint32_t x, uint32_t y, uint32_t text_
   dst->drawString(text, x, y);
 }
 
-
-void drawBounds(GWTouchButton *btn)
+template <typename GFX>
+void drawBounds(GFX* dst, GWTouchButton *btn)
 { // for debug
-  tft.drawRect(btn->xs, btn->ys, btn->xe-btn->xs, btn->ye-btn->ys, TFT_RED);
+  dst->drawRect(btn->xs, btn->ys, btn->xe-btn->xs, btn->ye-btn->ys, TFT_RED);
 }
 
 
@@ -461,6 +502,8 @@ void drawBuffer(uint8_t* data, uint32_t len)
 
 //  transparent buttons
 //  {
+//     LGFX_Sprite alphaSprite(&tft);
+//     alphaSprite.setColorDepth(32);
 //     auto box = {x, y, w, h};
 //     if( !alphaSprite.createSprite(box.w,box.h) )
 //       return;

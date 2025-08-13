@@ -9,6 +9,8 @@
 
 #include <FS.h>
 
+
+// GWBox: unshifted/unscaled coords/dimensions (until normalized)
 struct GWBox
 {
   double x{0}, y{0}; // 0..1 until normalized
@@ -83,18 +85,25 @@ struct GWFile
   GWFile() { }
   ~GWFile()
   {
-    if(path) delete(path);
+    if(path) free(path);
     if(data) free(data);
   }
   void setPath(const char*name)
   {
     assert(name);
-    path = new char[strlen(name)+1];
+    if(path)
+      free(path);
+    path = (char*)ps_calloc(1, strlen(name)+1);
     strcpy(path, name);
     path[strlen(name)] = '\0'; // superstitious terminator: strcpy supposedly did it, but terminate anyway
   }
 };
 
+
+namespace m5
+{
+ class LGFX_PPA; // hw accel for pixels needed by GWGame struct
+}
 
 // Game holder
 struct GWGame
@@ -110,15 +119,21 @@ struct GWGame
   uint32_t jpg_height{0};
   float jpg_zoom{2.0};
 
+  double zoomx{1.0f}; // view.input to output framebuffer
+  double zoomy{1.0f}; // view.input to output framebuffer
+
   GWFile romFile = GWFile();
   GWFile jpgFile = GWFile();
 
   bool preloaded{false};
 
+  m5::LGFX_PPA* ppa{nullptr};
+
   template <size_t N>
   GWGame(const char* name, const char*romname, GWLayout view, GWTouchButton (&tbtns)[N])
    : name(name), romname(romname), view(view), btns((GWTouchButton *)&tbtns), btns_count(N) { }
 
+  // stretch jpeg, normalize buttons and inner box
   void adjustLayout(uint32_t width, uint32_t height)
   {
     assert(width>0 && height>0);
@@ -141,7 +156,9 @@ struct GWGame
         //Serial.printf("view [outer-normalized] = [%d:%d][%d*%d]\n", (int)view.outerbox.x, (int)view.outerbox.y, (int)view.outerbox.w, (int)view.outerbox.h);
       // normalize inner view
       view.innerbox.normalize( view.outerbox );
-      // Serial.printf("view [inner-normalized] = [%d:%d][%d*%d]\n", (int)view.innerbox.x, (int)view.innerbox.y, (int)view.innerbox.w, (int)view.innerbox.h);
+      view.innerbox.w = int(view.innerbox.w/16.0f) * 16.0f; // round to nearest multiple of 16
+      view.innerbox.h = int(view.innerbox.h/16.0f) * 16.0f; // round to nearest multiple of 16
+      //Serial.printf("view [inner-normalized] = [%d:%d][%d*%d]\n", (int)view.innerbox.x, (int)view.innerbox.y, (int)view.innerbox.w, (int)view.innerbox.h);
       // buttons are shared across screen types, so normalize separately
       for(int i=0;i<btns_count;i++) {
         if( !btns[i].normalized )
@@ -150,44 +167,6 @@ struct GWGame
       view.normalized = true; // mark coords as normalized
     }
     // Serial.printf("view [absolute] = [%d:%d][%d*%d]\n", (int)view.innerbox.x, (int)view.innerbox.y, (int)view.innerbox.w, (int)view.innerbox.h);
-
   }
 };
-
-
-struct fpsCounter_t
-{
-  uint32_t last_frame = 0;
-  float fps = 0;
-  float avgms = 0;
-
-  float frames_count = 0;
-  float ms_count = 0;
-
-  void addFrame()
-  {
-    uint32_t now = millis();
-    if( last_frame == 0 )
-      last_frame = now;
-
-    auto elapsed = now-last_frame;
-    last_frame = millis();
-
-    frames_count++;
-    ms_count += elapsed;
-
-    if( frames_count>0 && ms_count>=1000.0f ) {
-      avgms = ms_count/frames_count;
-      frames_count = 0;//1;//last_avg!=0 ?        1 : 0;
-      ms_count     = 0;//last_avg;//last_avg!=0 ? last_avg : 0;
-    }
-
-  }
-
-  float getFps()
-  {
-    return avgms!=0 ? 1000.f/avgms : 0;
-  }
-
-} fpsCounter;
 

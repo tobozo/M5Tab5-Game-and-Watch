@@ -17,6 +17,7 @@ namespace m5
   //   tm rtc_datetime_t::get_tm(void)
   //   void rtc_datetime_t::set_tm(tm& datetime)
 
+  // RX8130CE RTC module
   class RTC8130_Class : public I2C_Device
   {
   public:

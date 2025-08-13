@@ -155,7 +155,7 @@ class M5UsbHost : public EspUsbHost
         break;
 
         default:
-          Serial.printf("Unhandled keycode: [0x%02x:%x]\n", keycode, modifier);
+          ESP_LOGD("USB", "Unhandled keycode: [0x%02x:%x]\n", keycode, modifier);
         break;
       }
     }
@@ -222,7 +222,6 @@ class M5UsbHost : public EspUsbHost
       break;
     }
   }
-
 
   // virtual void onGone(const usb_host_client_event_msg_t *eventMsg){};
   //
