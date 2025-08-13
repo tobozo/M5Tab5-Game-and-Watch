@@ -24,44 +24,46 @@ $JpgExportDir = $ExportDir;
 // $JpgExportDir = $ExportDir.'/artworks';
 
 $gamesMap = [
-  'ball'     => ['AC-01' , 'gnw_ball'    , "Ball"                  , 'Silver'         , 'SS2Btns' , 'SSLay' , 'AC-01.png' ],
-  'bfight'   => ['BF-803', 'gnw_bfight'  , "Balloon Fight"         , 'Crystal Screen' , 'CS5Btns' , 'CSLay' , 'new-wide-screen-bfight.png' ],
-  'chef'     => ['FP-24' , 'gnw_chef'    , "Chef"                  , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'FP-24.png' ],
-  'climber'  => ['DR-802', 'gnw_climber' , "Climber"               , 'Crystal Screen' , 'CS5Btns' , 'CSLay' , 'new-wide-screen-climber.png' ],
-  'dkjr'     => ['DJ-101', 'gnw_dkjr'    , "Donkey Kong Jr."       , 'New Wide Screen', 'NWS5Btns', 'NWSLay', 'DJ-101.png' ],
-  'dkjrp'    => ['CJ-71' , 'gnw_dkjrp'   , "Donkey Kong Jr."       , 'Table Top'      , 'NWS5Btns', 'NWSLay', 'new-wide-screen-5-buttons-dkjrp.png' ],
-  'fire'     => ['FR-27' , 'gnw_fire'    , "Fire"                  , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'FR-27.png' ],
-  'fireatk'  => ['ID-29' , 'gnw_fireatk' , "Fire Attack"           , 'Wide Screen'    , 'WS4Btns' , 'WSLay' , 'ID-29.png' ],
-  'fires'    => ['RC-04' , 'gnw_fires'   , "Fire"                  , 'Silver'         , 'SS2Btns' , 'SSLay' , 'RC-04.png' ],
-  'flagman'  => ['FL-02' , 'gnw_flagman' , "Flagman"               , 'Silver'         , 'SS4Btns' , 'SSLay' , 'FL-02.png' ],
-  'helmet'   => ['CN-07' , 'gnw_helmet'  , "Helmet"                , 'Gold'           , 'GS2Btns' , 'GSLay' , 'CN-07.png' ],
-  'judge'    => ['IP-05' , 'gnw_judge'   , "Judge"                 , 'Silver'         , 'SS4Btns' , 'SSLay' , 'IP-05.png' ],
-  'lion'     => ['LN-08' , 'gnw_lion'    , "Lion"                  , 'Gold'           , 'GS4Btns' , 'GSLay' , 'Unit.png' ],
-  'manhole'  => ['NH-103', 'gnw_manhole' , "Manhole"               , 'New Wide Screen', 'NWS4Btns', 'NWSLay', 'NH-103.png' ],
-  'manholeg' => ['MH-06' , 'gnw_manholeg', "Manhole"               , 'Gold'           , 'GS4Btns' , 'GSLay' , 'Unit.png' ],
-  'mariocm'  => ['ML-102', 'gnw_mariocm' , "Mario's Cement Factory", 'New Wide Screen', 'NWS3Btns', 'NWSLay', 'ML-102.png' ],
-  'mariocmt' => ['CM-72' , 'gnw_mariocmt', "Mario's Cement Factory", 'Table Top'      , 'NWS3Btns', 'NWSLay', 'wide-screen-3-buttons-mariocmt.png' ],
-  'mariotj'  => ['MB-108', 'gnw_mariotj' , "Mario the Juggler"     , 'New Wide Screen', 'NWS2Btns', 'NWSLay', 'Unit.png' ],
-  'mbaway'   => ['TB-94' , 'gnw_mbaway'  , "Mario's Bombs Away"    , 'Panorama'       , 'NWS3Btns', 'NWSLay', 'new-wide-screen-3-buttons-mbaway.png' ],
-  'mmouse'   => ['MC-25' , 'gnw_mmouse'  , "Mickey Mouse"          , 'Wide Screen'    , 'WS4Btns' , 'WSLay' , 'MC-25.png' ],
-  'mmousep'  => ['DC-95' , 'gnw_mmousep' , "Mickey Mouse"          , 'Panorama'       , 'WS2Btns' , 'WSLay' , 'wide-screen-from-panoramic-mmousep.png' ],
-  'octopus'  => ['OC-22' , 'gnw_octopus' , "Octopus"               , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'OC-22.png' ],
-  'pchute'   => ['PR-21' , 'gnw_pchute'  , "Parachute"             , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'PR-21.png' ],
-  'popeye'   => ['PP-23' , 'gnw_popeye'  , "Popeye"                , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'PP-23.png' ],
-  'popeyep'  => ['PG-92' , 'gnw_popeyep' , "Popeye"                , 'Panorama'       , 'NWS3Btns', 'NWSLay', 'new-wide-screen-popeyep.png' ],
-  'smb'      => ['YM-801', 'gnw_smb'     , "Super Mario Bros."     , 'Crystal Screen' , 'CS5Btns' , 'CSLay' , 'new-wide-screen-smb.png' ],
-  'snoopyp'  => ['SM-73' , 'gnw_snoopyp' , "Snoopy"                , 'Table Top'      , 'NWS3Btns', 'NWSLay', 'new-wide-screen-snoopyp.png' ],
-  'stennis'  => ['SP-30' , 'gnw_stennis' , "Snoopy Tennis"         , 'Wide Screen'    , 'WS3Btns' , 'WSLay' , 'SP-30.png' ],
-  'tbridge'  => ['TL-28' , 'gnw_tbridge' , "Turtle Bridge"         , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'TF-104.png' ],
-  'tfish'    => ['TF-104', 'gnw_tfish'   , "Tropical Fish"         , 'New Wide Screen', 'NWS2Btns', 'NWSLay', 'TF-104.png' ],
-  'vermin'   => ['MT-03' , 'gnw_vermin'  , "Vermin"                , 'Silver'         , 'SS2Btns' , 'SSLay' , 'MT-03.png' ],
+//  name       => [model   , romname       , title                   , series           , buttonset , layout  , artwork ],
+    'ball'     => ['AC-01' , 'gnw_ball'    , "Ball"                  , 'Silver'         , 'SS2Btns' , 'SSLay' , 'AC-01.png' ],
+    'bfight'   => ['BF-803', 'gnw_bfight'  , "Balloon Fight"         , 'Crystal Screen' , 'CS5Btns' , 'CSLay' , 'new-wide-screen-bfight.png' ],
+    'chef'     => ['FP-24' , 'gnw_chef'    , "Chef"                  , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'FP-24.png' ],
+    'climber'  => ['DR-802', 'gnw_climber' , "Climber"               , 'Crystal Screen' , 'CS5Btns' , 'CSLay' , 'new-wide-screen-climber.png' ],
+    'dkjr'     => ['DJ-101', 'gnw_dkjr'    , "Donkey Kong Jr."       , 'New Wide Screen', 'NWS5Btns', 'NWSLay', 'DJ-101.png' ],
+    'dkjrp'    => ['CJ-71' , 'gnw_dkjrp'   , "Donkey Kong Jr."       , 'Table Top'      , 'NWS5Btns', 'NWSLay', 'new-wide-screen-5-buttons-dkjrp.png' ],
+    'fire'     => ['FR-27' , 'gnw_fire'    , "Fire"                  , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'FR-27.png' ],
+    'fireatk'  => ['ID-29' , 'gnw_fireatk' , "Fire Attack"           , 'Wide Screen'    , 'WS4Btns' , 'WSLay' , 'ID-29.png' ],
+    'fires'    => ['RC-04' , 'gnw_fires'   , "Fire"                  , 'Silver'         , 'SS2Btns' , 'SSLay' , 'RC-04.png' ],
+    'flagman'  => ['FL-02' , 'gnw_flagman' , "Flagman"               , 'Silver'         , 'SS4Btns' , 'SSLay' , 'FL-02.png' ],
+    'helmet'   => ['CN-07' , 'gnw_helmet'  , "Helmet"                , 'Gold'           , 'GS2Btns' , 'GSLay' , 'CN-07.png' ],
+    'judge'    => ['IP-05' , 'gnw_judge'   , "Judge"                 , 'Silver'         , 'SS4Btns' , 'SSLay' , 'IP-05.png' ],
+    'lion'     => ['LN-08' , 'gnw_lion'    , "Lion"                  , 'Gold'           , 'GS4Btns' , 'GSLay' , 'Unit.png' ],
+    'manhole'  => ['NH-103', 'gnw_manhole' , "Manhole"               , 'New Wide Screen', 'NWS4Btns', 'NWSLay', 'NH-103.png' ],
+    'manholeg' => ['MH-06' , 'gnw_manholeg', "Manhole"               , 'Gold'           , 'GS4Btns' , 'GSLay' , 'Unit.png' ],
+    'mariocm'  => ['ML-102', 'gnw_mariocm' , "Mario's Cement Factory", 'New Wide Screen', 'NWS3Btns', 'NWSLay', 'ML-102.png' ],
+    'mariocmt' => ['CM-72' , 'gnw_mariocmt', "Mario's Cement Factory", 'Table Top'      , 'NWS3Btns', 'NWSLay', 'wide-screen-3-buttons-mariocmt.png' ],
+    'mariotj'  => ['MB-108', 'gnw_mariotj' , "Mario the Juggler"     , 'New Wide Screen', 'NWS2Btns', 'NWSLay', 'Unit.png' ],
+    'mbaway'   => ['TB-94' , 'gnw_mbaway'  , "Mario's Bombs Away"    , 'Panorama'       , 'NWS3Btns', 'NWSLay', 'new-wide-screen-3-buttons-mbaway.png' ],
+    'mmouse'   => ['MC-25' , 'gnw_mmouse'  , "Mickey Mouse"          , 'Wide Screen'    , 'WS4Btns' , 'WSLay' , 'MC-25.png' ],
+    'mmousep'  => ['DC-95' , 'gnw_mmousep' , "Mickey Mouse"          , 'Panorama'       , 'WS2Btns' , 'WSLay' , 'wide-screen-from-panoramic-mmousep.png' ],
+    'octopus'  => ['OC-22' , 'gnw_octopus' , "Octopus"               , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'OC-22.png' ],
+    'pchute'   => ['PR-21' , 'gnw_pchute'  , "Parachute"             , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'PR-21.png' ],
+    'popeye'   => ['PP-23' , 'gnw_popeye'  , "Popeye"                , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'PP-23.png' ],
+    'popeyep'  => ['PG-92' , 'gnw_popeyep' , "Popeye"                , 'Panorama'       , 'NWS3Btns', 'NWSLay', 'new-wide-screen-popeyep.png' ],
+    'smb'      => ['YM-801', 'gnw_smb'     , "Super Mario Bros."     , 'Crystal Screen' , 'CS5Btns' , 'CSLay' , 'new-wide-screen-smb.png' ],
+    'snoopyp'  => ['SM-73' , 'gnw_snoopyp' , "Snoopy"                , 'Table Top'      , 'NWS3Btns', 'NWSLay', 'new-wide-screen-snoopyp.png' ],
+    'stennis'  => ['SP-30' , 'gnw_stennis' , "Snoopy Tennis"         , 'Wide Screen'    , 'WS3Btns' , 'WSLay' , 'SP-30.png' ],
+    'tbridge'  => ['TL-28' , 'gnw_tbridge' , "Turtle Bridge"         , 'Wide Screen'    , 'WS2Btns' , 'WSLay' , 'TF-104.png' ],
+    'tfish'    => ['TF-104', 'gnw_tfish'   , "Tropical Fish"         , 'New Wide Screen', 'NWS2Btns', 'NWSLay', 'TF-104.png' ],
+    'vermin'   => ['MT-03' , 'gnw_vermin'  , "Vermin"                , 'Silver'         , 'SS2Btns' , 'SSLay' , 'MT-03.png' ],
 ]; // 31 items
 
 // add some fields to the array, will be populated from the mame cpp file
-foreach($gamesMap as $game => $map)
+foreach($gamesMap as $name => $gameAry)
 {
-  $gamesMap[$game][] = [];      // inputs
-  $gamesMap[$game][] = ['GAW']; // controls
+  $gamesMap[$name][] = [];      // inputs
+  $gamesMap[$name][] = ['GAW']; // controls
+  $gamesMap[$name] = game($name);
 }
 
 
@@ -117,7 +119,7 @@ $GwTouchButtonsSet = [];
 $gameslist = [];
 
 // support for image creation
-//extension_loaded("gd") or die("Enable gd extension in php.ini!!".PHP_EOL);
+extension_loaded("gd") or die("Enable gd extension in php.ini!!".PHP_EOL);
 exec("magick -help") or die("imagemagick not found".PHP_EOL);
 
 
@@ -196,13 +198,13 @@ for($l=0;$l<count($mameClassLines);$l++)
     $inputName = preg_replace("/IPT_(JOYSTICK)?_?/", "", $inputName); // remove macro prefix
     if( !in_array(trim($out[3]), $controlPorts)) { // is an input port (up/down/left/right/action)
       // TouchButton objects in the destination cpp code will expect this formatting
-      $gamesMap[$romshortname][7][]   = str_replace(' ', '', mb_convert_case(str_replace('_', ' ', strtolower($inputName)), MB_CASE_TITLE, 'UTF-8')); // add to rom
+      $gamesMap[$romshortname]['inputs'][]   = str_replace(' ', '', mb_convert_case(str_replace('_', ' ', strtolower($inputName)), MB_CASE_TITLE, 'UTF-8')); // add to rom
 
     } else { // is a control port (time/alarm/acl/game a/game b)
-      if( $inputName!='UNUSED' && !in_array($inputName, $gamesMap[$romshortname][8])) { // prevent duplicates
+      if( $inputName!='UNUSED' && !in_array($inputName, $gamesMap[$romshortname]['controls'])) { // prevent duplicates
         if(!preg_match('/PORT_NAME\("([^\)]+)"\)/', $line, $out))
           die("$romname::$inputName has no port name");
-        $gamesMap[$romshortname][8][]   = str_replace(" ", "", ($out[1])); // add to rom
+        $gamesMap[$romshortname]['controls'][]   = str_replace(" ", "", ($out[1])); // add to rom
       }
     }
 
@@ -210,9 +212,8 @@ for($l=0;$l<count($mameClassLines);$l++)
 }
 
 
-foreach($gamesMap as $game => $ary)
+foreach($gamesMap as $game => $gameAry)
 {
-  $gameAry = game($game) or die("Unknown game:".$game.PHP_EOL);
 
   $btns  = $gameAry['buttons_layout'];
   $layer = $gameAry['artwork_layout'];
@@ -285,23 +286,35 @@ foreach($gamesMap as $game => $ary)
     }
   }
 
-  // list( $dstwidth, $dstheight ) = explode("x", $artworkSize); // dst
-  // list( $srcwidth, $srcheight ) = getimagesize($pngartwork);    // src
-  //
-  // $multiplier = min( $dstwidth/$srcwidth, $dstheight/$srcheight );
-  // $dstwidth  = (int)($srcwidth*$multiplier);
-  // $dstheight = (int)($srcheight*$multiplier);
-  //
-  // // echo sprintf("[$srcwidth:$srcheight] * %.2f = [%d:%d]".PHP_EOL, $multiplier, $srcwidth*$multiplier, $srcheight*$multiplier);
-  //
-  // $imgsrc = @imagecreatefrompng($pngartwork);
-  // $imgdst = imagecreatetruecolor($dstwidth, $dstheight);
-  //
-  // imagecopyresampled($imgdst, $imgsrc, 0, 0, 0, 0, $dstwidth, $dstheight, $srcwidth, $srcheight);
+  list( $dstwidth, $dstheight ) = explode("x", $artworkSize); // dst
+  list( $srcwidth, $srcheight ) = getimagesize($pngartwork);    // src
 
+  $multiplier = min( $dstwidth/$srcwidth, $dstheight/$srcheight );
+  $dstwidth  = (int)($srcwidth*$multiplier);
+  $dstheight = (int)($srcheight*$multiplier);
 
-  $cmd = sprintf('magick %s -resize %s -size %s -quality %d %s', $pngartwork, $artworkSize, $artworkSize, $artworkQuality, $tmpDir.'/'.$jpgartwork); // shrink the artwork, downsize+compress
-  exec($cmd, $out);
+  // adjust width to a multiple of 4
+  $offsetx = $dstwidth%4;
+  if($offsetx!=0) {
+    $dstwidth += 4-$offsetx;
+  }
+  // adjust height to a multiple of 2
+  $offsety = $dstheight%2;
+  if($offsety!=0) {
+    $dstheight += 2-$offsety;
+  }
+
+  // echo sprintf("[$srcwidth:$srcheight] * %.2f = [%d:%d]".PHP_EOL, $multiplier, $srcwidth*$multiplier, $srcheight*$multiplier);
+
+  $imgsrc = @imagecreatefrompng($pngartwork);
+  $imgdst = imagecreatetruecolor($dstwidth, $dstheight);
+
+  imagecopyresampled($imgdst, $imgsrc, 0, 0, 0, 0, $dstwidth, $dstheight, $srcwidth, $srcheight);
+
+  imagejpeg($imgdst, $tmpDir.'/'.$jpgartwork, 80);
+
+  //$cmd = sprintf('magick %s -resize %s -size %s -quality %d %s', $pngartwork, $artworkSize, $artworkSize, $artworkQuality, $tmpDir.'/'.$jpgartwork); // shrink the artwork, downsize+compress
+  //exec($cmd, $out);
 
 
   if($isGeneric) {
@@ -313,8 +326,7 @@ foreach($gamesMap as $game => $ary)
   //echo imageresolution($imgsrc)[0].PHP_EOL;
   //imageresolution($imgsrc, 300);
 
-  // fuck that, imagejpeg is unable to produce a consistent result between windows and linux (windows images are bigger)
-  // imagejpeg($imgdst, $tmpDir.'/'.$jpgartwork, 80);
+
 
   // gzip'em all
   foreach([$tmpDir.'/'.$gwrom=>$gzgwrom, $tmpDir.'/'.$jpgartwork=>$gzjpgartwork] as $src=>$dst)
