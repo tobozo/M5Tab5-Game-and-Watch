@@ -9,6 +9,44 @@
 
 #include <FS.h>
 
+// Ram file holder
+struct GWFile
+{
+public:
+  char *path{nullptr};          // file path
+  unsigned char *data{nullptr}; // data
+  uint32_t len{0};              // file size
+
+  GWFile() { }
+  template <typename T>
+  GWFile(char*path, T*_data, uint32_t len) : path(path), data((unsigned char*)_data), len(len) { }
+  void setPath(const char*name)
+  {
+    assert(name);
+    path = (char*)ps_calloc(1, strlen(name)+1);
+    strcpy(path, name);
+    path[strlen(name)] = '\0'; // superstitious terminator: strcpy supposedly did it, but terminate anyway
+  }
+};
+
+
+
+struct GWImage
+{
+  enum file_type {
+    RAW,
+    JPG,
+    PNG,
+    BMP,
+    RGB565,
+  };
+  GWFile file;
+  file_type type;
+  uint32_t width;
+  uint32_t height;
+};
+
+
 
 // GWBox: unshifted/unscaled coords/dimensions (until normalized)
 struct GWBox
@@ -35,9 +73,11 @@ public:
   const uint32_t hw_val{0}; // button code for the emulator
   bool normalized{false};
   const uint8_t keyCode{0};
+  GWImage* icon{nullptr}; // optional image
 
-  GWTouchButton(const char* name, double x, double y, double w, double h, uint32_t hw_val,  uint8_t keyCode, bool normalized=false)
-  : name(name), xs(x), ys(y), xe(w+x), ye(h+y), hw_val(hw_val), normalized(normalized), keyCode(keyCode) { }
+  GWTouchButton(const char* name, double x, double y, double w, double h, uint32_t hw_val,  uint8_t keyCode, bool normalized=false, GWImage* icon=nullptr)
+  : name(name), xs(x), ys(y), xe(w+x), ye(h+y), hw_val(hw_val), normalized(normalized), keyCode(keyCode), icon(icon) { }
+
 
   void normalize(const GWBox box)
   {
@@ -65,6 +105,19 @@ public:
 };
 
 
+struct GWToggleSwitch
+{
+public:
+  GWTouchButton *btn;
+  GWToggleSwitch( GWTouchButton* btn, bool*state ) : btn(btn), state(state) { assert(btn); assert(state); last_state=!*state; }
+  bool enabled() const { return *state; }
+  bool changed() { bool ret = *state!=last_state; last_state = *state; return ret; }
+private:
+  bool* state;
+  bool last_state;
+};
+
+
 // Emulator layout (inner and outer) sizes and positions
 struct GWLayout
 {
@@ -75,35 +128,15 @@ struct GWLayout
 };
 
 
-// Ram file holder
-struct GWFile
-{
-  char *path{nullptr};          // file path
-  unsigned char *data{nullptr}; // data
-  uint32_t len{0};              // file size
-
-  GWFile() { }
-  ~GWFile()
-  {
-    if(path) free(path);
-    if(data) free(data);
-  }
-  void setPath(const char*name)
-  {
-    assert(name);
-    if(path)
-      free(path);
-    path = (char*)ps_calloc(1, strlen(name)+1);
-    strcpy(path, name);
-    path[strlen(name)] = '\0'; // superstitious terminator: strcpy supposedly did it, but terminate anyway
-  }
-};
-
 
 namespace m5
 {
- class LGFX_PPA; // hw accel for pixels needed by GWGame struct
+  // hw accel for pixels needed by GWGame struct
+  class LGFX_PPA_SRM;
+  class LGFX_PPA_BLEND;
 }
+
+m5::LGFX_PPA_BLEND* ppa_blend = nullptr;
 
 // Game holder
 struct GWGame
@@ -127,11 +160,24 @@ struct GWGame
 
   bool preloaded{false};
 
-  m5::LGFX_PPA* ppa{nullptr};
+  m5::LGFX_PPA_SRM* ppa_srm{nullptr};
 
   template <size_t N>
   GWGame(const char* name, const char*romname, GWLayout view, GWTouchButton (&tbtns)[N])
    : name(name), romname(romname), view(view), btns((GWTouchButton *)&tbtns), btns_count(N) { }
+
+
+  GWTouchButton* getButtonByLabel(const char*named_like)
+  {
+    String suffix = String(named_like);
+    for( int i=0;i<btns_count;i++) {
+      auto tbnameStr = String(btns[i].name);
+      if( tbnameStr.endsWith(suffix) )
+        return &btns[i];
+    }
+    return nullptr;
+  }
+
 
   // stretch jpeg, normalize buttons and inner box
   void adjustLayout(uint32_t width, uint32_t height)
@@ -169,4 +215,84 @@ struct GWGame
     // Serial.printf("view [absolute] = [%d:%d][%d*%d]\n", (int)view.innerbox.x, (int)view.innerbox.y, (int)view.innerbox.w, (int)view.innerbox.h);
   }
 };
+
+
+struct gw_kbd_debugger
+{
+  void printKey(int byteNum, uint8_t byteVal)
+  {
+    Serial.printf(" K%d=", byteNum+1);
+    uint8_t bits_enabled = 0;
+    for(int bitNum=0;bitNum<8;bitNum++) {
+      if( bitRead(byteVal, bitNum) == 0 ) {
+        continue;
+      }
+      bits_enabled++;
+      String buttonLabel = "                ";
+      switch(bitNum) {
+        case 0: buttonLabel ="BUTTON_LEFT" ; break;
+        case 1: buttonLabel ="BUTTON_UP"   ; break;
+        case 2: buttonLabel ="BUTTON_RIGHT"; break;
+        case 3: buttonLabel ="BUTTON_DOWN" ; break;
+        case 4: buttonLabel ="BUTTON_A"    ; break;
+        case 5: buttonLabel ="BUTTON_B"    ; break;
+        case 6: buttonLabel ="BUTTON_TIME" ; break;
+        case 7: buttonLabel ="BUTTON_GAME" ; break;
+      }
+      if(bits_enabled>1) {
+        Serial.print("+");
+      }
+      Serial.print(buttonLabel);
+    }
+  }
+
+  void printKeyboard(unsigned int *kbd)
+  {
+    uint8_t total_screens = 0;
+    uint8_t total_keys = 0;
+
+    for (int i = 0; i < 8; i++) {
+      if( kbd[i] == 0 || kbd[i] == 0x00804000 || kbd[i]==0x00008000)
+        continue;
+      uint8_t K1 = kbd[i] & 0xFF;
+      uint8_t K2 = (kbd[i] >> 8) & 0xFF;
+      uint8_t K3 = (kbd[i] >> 16) & 0xFF;
+      uint8_t K4 = (kbd[i] >> 24) & 0xFF;
+      uint8_t S[4] = {K1, K2, K3, K4};
+      Serial.printf("[S%d] 0x%08x ", i+1, kbd[i]);
+      uint8_t enabled_keys = 0;
+      for(int byteNum=0;byteNum<4;byteNum++) {
+        if( S[byteNum] == 0 )
+          continue;
+        enabled_keys++;
+        printKey(byteNum, S[byteNum]);
+      }
+      total_keys += enabled_keys;
+      total_screens ++;
+      Serial.println();
+    }
+
+    if(total_screens>0) {
+      ESP_LOGD("KDB Debug", "Game has %d Screen%s and %d Keys\n", total_screens, total_screens>1?"s":"", total_keys);
+    }
+
+  }
+} kbd_debugger;
+
+
+// togglable GUI options
+static bool show_fps = false;
+static bool debug_buttons = false;
+static bool debug_gestures = false;
+
+static bool in_options_menu = false; // navigation : show/hide options menu
+
+static bool sdcard_ok = false;
+static bool littlefs_ok = false;
+
+// togglable hardware features
+static bool audio_enabled   = true;
+static bool usbhost_enabled = true;
+static bool ppa_enabled     = true;
+
 

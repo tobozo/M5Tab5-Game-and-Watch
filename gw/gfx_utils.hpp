@@ -50,25 +50,36 @@ const char* GFX_TAG = "GW Utils";
 
 GWBox GWFBBox(0,0,GW_SCREEN_WIDTH,GW_SCREEN_HEIGHT);
 
+GWImage IconSaveRTC{.file={nullptr,save_rtc_jpg , save_rtc_jpg_len }, .type=GWImage::JPG, .width=77, .height=48 };
+GWImage IconDebug  {.file={nullptr,dgb_png      , dgb_png_len      }, .type=GWImage::PNG, .width=64, .height=64 };
+GWImage IconFPS    {.file={nullptr,fps_png      , fps_png_len      }, .type=GWImage::PNG, .width=64, .height=64 };
+GWImage IconGamepad{.file={nullptr,gamepad_png  , gamepad_png_len  }, .type=GWImage::PNG, .width=64, .height=64 };
+GWImage IconMute   {.file={nullptr,mute_png     , mute_png_len     }, .type=GWImage::PNG, .width=64, .height=64 };
+GWImage IconPPA    {.file={nullptr,ppa_png      , ppa_png_len      }, .type=GWImage::PNG, .width=64, .height=64 };
+GWImage IconPrefs  {.file={nullptr,prefs_png    , prefs_png_len    }, .type=GWImage::PNG, .width=64, .height=64 };
+GWImage IconSndM   {.file={nullptr,snd_minus_png, snd_minus_png_len}, .type=GWImage::PNG, .width=64, .height=64 };
+GWImage IconSndP   {.file={nullptr,snd_plus_png , snd_plus_png_len }, .type=GWImage::PNG, .width=64, .height=64 };
+GWImage IconLoading{.file={nullptr,hourglass_png, hourglass_png_len}, .type=GWImage::PNG, .width=64, .height=64 };
 
-static bool show_fps = false;
-static bool debug_buttons = false; // true;
-static bool debug_gestures = false;
+
 
 // for pushSpriteTransition reveal effect
 static uint16_t *vCopyBuff = nullptr;
 static uint16_t *hCopyBuff = nullptr;
 
 LGFX_Sprite canvas(&tft); // jpeg game background holder
+LGFX_Sprite MenuSprite(&tft); // menu overlay for canvas
+LGFX_Sprite BlendSprite(&tft); // menu overlay for canvas
 LGFX_Sprite dim(&tft);    // semi transparent overlay to dim background
 LGFX_Sprite textBox(&tft);
 LGFX_Sprite GWSprite(&tft);
+//LGFX_Sprite Hourglass(&MenuSprite); // hourglass pre-rendered png icon
 
 static uint16_t *gw_fb; // Game&Watch framebuffer @16bpp
 const uint32_t fbsize = GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * sizeof(uint16_t);
 
-static double zoomx = 1.0f; // framebuffer to canvas zoom ratio
-static double zoomy = 1.0f; // framebuffer to canvas zoom ratio
+//static double zoomx = 1.0f; // framebuffer to canvas zoom ratio
+//static double zoomy = 1.0f; // framebuffer to canvas zoom ratio
 
 static std::vector<GWGame*> GWGames;
 
@@ -79,6 +90,67 @@ static uint16_t volume = 8191; // 0..32767 (0x7fff)
 static const uint16_t volume_increment = 2048; // ~16 levels
 
 RGBColor heatMapColors[] = { {0, 0xff, 0}, {0xff, 0xff, 0}, {0xff, 0x80, 0}, {0xff, 0, 0} }; // green => yellow => orange => red
+
+template <size_t palette_size>
+RGBColor getHeatMapColor( int value, int minimum, int maximum, RGBColor (&colors)[palette_size]/*RGBColor *colors*//*, size_t palette_size*/ )
+{
+  float indexFloat = float(value-minimum) / float(maximum-minimum) * float(palette_size-1);
+  int paletteIndex = int(indexFloat/1);
+  float distance = indexFloat - float(paletteIndex);
+  if( distance < std::numeric_limits<float>::epsilon() ) {
+    return { colors[paletteIndex].r, colors[paletteIndex].g, colors[paletteIndex].b };
+  } else {
+    uint8_t r1 = colors[paletteIndex].r;
+    uint8_t g1 = colors[paletteIndex].g;
+    uint8_t b1 = colors[paletteIndex].b;
+    uint8_t r2 = colors[paletteIndex+1].r;
+    uint8_t g2 = colors[paletteIndex+1].g;
+    uint8_t b2 = colors[paletteIndex+1].b;
+    return { uint8_t(r1 + distance*float(r2-r1)), uint8_t(g1 + distance*float(g2-g1)), uint8_t(b1 + distance*float(b2-b1)) };
+  }
+}
+
+// forward declaration
+template <typename GFX>
+void drawVolume(GFX* gfx, uint16_t* buf=nullptr )
+{
+  int32_t dstx = volumeBox.x, dsty = volumeBox.y;
+  uint32_t width = volumeBox.w, height = volumeBox.h; // NOTE: width must be a multiple of 32
+
+  if( gfx) {
+
+    uint32_t steps = 0x8000/volume_increment; // 16 steps
+    RGBColor volumeColor;
+    uint32_t volume_bar_width   = ((2*width)/(3*steps)); // multiple of 4
+    uint32_t volume_bar_marginx = volume_bar_width/2; // multiple of 2
+    uint32_t volume_bar_height  = height; // multiple of 4
+    uint32_t volume_bar_pady    = volume_bar_height/4;
+
+    uint32_t real_width = (volume_bar_width*steps)+(volume_bar_marginx*(steps-1));
+    int leftover = width-real_width;
+    // Serial.printf("Drawing volume %d (leftover pixels=%d)\n", volume, leftover);
+    for(int i=0;i<steps;i++) {
+      uint32_t step_volume = i*volume_increment;
+      if( volume!=0 && volume>=step_volume ) {
+        volumeColor = getHeatMapColor(step_volume, 0, 0x7fff, heatMapColors);
+      } else {
+        volumeColor = RGBColor{0x80,0x80,0x80};
+      }
+      uint32_t x = (volume_bar_width+volume_bar_marginx)*i + leftover/2;
+      uint32_t h = map(i, 0, steps, volume_bar_pady, volume_bar_height);
+      uint32_t y = volume_bar_height-h;
+      gfx->fillRect(dstx+x, dsty+y, volume_bar_width, h, volumeColor);
+    }
+  }
+
+  if( buf ) {
+    tft.setClipRect(dstx, dsty, width, height);
+    MenuSprite.pushSprite(0,0,TFT_BLACK);
+    //tft.pushImage(0,0,tft.width(),tft.height(),(uint16_t*)buf, TFT_BLACK);
+    tft.clearClipRect();
+  }
+
+}
 
 
 void handleFps()
@@ -132,78 +204,28 @@ void tft_error(const char * format, ...)
 {
   va_list args;
   va_start (args, format);
-  //tft.endWrite();
   tft.clear();
   tft.setFont(&FreeSansBold24pt7b);
   tft.setTextSize(2);
   tft.setTextColor(TFT_RED);
   tft.setCursor(0, tft.height()/2);
   tft.printf(format, args);
-  //tft.startWrite();
   Serial.printf(format, args);
   Serial.println();
   va_end (args);
 }
 
 
-template <size_t palette_size>
-RGBColor getHeatMapColor( int value, int minimum, int maximum, RGBColor (&colors)[palette_size]/*RGBColor *colors*//*, size_t palette_size*/ )
-{
-  float indexFloat = float(value-minimum) / float(maximum-minimum) * float(palette_size-1);
-  int paletteIndex = int(indexFloat/1);
-  float distance = indexFloat - float(paletteIndex);
-  if( distance < std::numeric_limits<float>::epsilon() ) {
-    return { colors[paletteIndex].r, colors[paletteIndex].g, colors[paletteIndex].b };
-  } else {
-    uint8_t r1 = colors[paletteIndex].r;
-    uint8_t g1 = colors[paletteIndex].g;
-    uint8_t b1 = colors[paletteIndex].b;
-    uint8_t r2 = colors[paletteIndex+1].r;
-    uint8_t g2 = colors[paletteIndex+1].g;
-    uint8_t b2 = colors[paletteIndex+1].b;
-    return { uint8_t(r1 + distance*float(r2-r1)), uint8_t(g1 + distance*float(g2-g1)), uint8_t(b1 + distance*float(b2-b1)) };
-  }
-}
-
-
-void drawVolume(int32_t dstx, int32_t dsty, uint32_t width=200/*multiple of 32*/, uint32_t height=48)
-{
-  uint32_t steps = 0x8000/volume_increment; // 16 steps
-  RGBColor volumeColor;
-  uint32_t volume_bar_width   = ((2*width)/(3*steps)); // multiple of 4
-  uint32_t volume_bar_marginx = volume_bar_width/2; // multiple of 2
-  uint32_t volume_bar_height  = height; // multiple of 4
-  uint32_t volume_bar_pady    = volume_bar_height/4;
-
-  uint32_t real_width = (volume_bar_width*steps)+(volume_bar_marginx*(steps-1));
-  int leftover = width-real_width;
-  // Serial.printf("Drawing volume %d (leftover pixels=%d)\n", volume, leftover);
-  for(int i=0;i<steps;i++) {
-    uint32_t step_volume = i*volume_increment;
-    if( volume!=0 && volume>=step_volume ) {
-      volumeColor = getHeatMapColor(step_volume, 0, 0x7fff, heatMapColors);
-    } else {
-      volumeColor = RGBColor{0x80,0x80,0x80};
-    }
-    uint32_t x = (volume_bar_width+volume_bar_marginx)*i + leftover/2;
-    uint32_t h = map(i, 0, steps, volume_bar_pady, volume_bar_height);
-    uint32_t y = volume_bar_height-h;
-    tft.fillRect(dstx+x, dsty+y, volume_bar_width, h, volumeColor);
-  }
-}
 
 
 // Gets the JPEG size from the array of data passed to the function, file reference: http://www.obrador.com/essentialjpeg/headerinfo.htm
 bool get_jpeg_size(unsigned char* data, unsigned int data_size, uint32_t *width, uint32_t *height)
 {
-  //int i=0;   // Keeps track of the position within the file
   // Check for valid JPEG file (SOI Header)
   if(data[0] != 0xFF || data[1] != 0xD8 || data[2] != 0xFF || data[3] != 0xE0) {
     ESP_LOGE(GFX_TAG, "Not a valid SOI header");
     return false;
   }
-
-  //i += 4;
 
   // Check for valid JPEG header (null terminated JFIF)
   if(data[6] != 'J' || data[7] != 'F' || data[8] != 'I' || data[9] != 'F' || data[10] != 0x00) { // Not a valid JFIF string
@@ -213,8 +235,7 @@ bool get_jpeg_size(unsigned char* data, unsigned int data_size, uint32_t *width,
 
   int i = 4; // position within the file
 
-  //if(data[i+2] == 'J' && data[i+3] == 'F' && data[i+4] == 'I' && data[i+5] == 'F' && data[i+6] == 0x00) {
-    // Retrieve the block length of the first block since the first block will not contain the size of file
+  // Retrieve the block length of the first block since the first block will not contain the size of file
   unsigned short block_length = data[i] * 256 + data[i+1];
   while(i<data_size) {
     i+=block_length;                  // Increase the file index to get to the next block
@@ -247,58 +268,110 @@ void gzProgressCb(uint8_t progress)
 }
 
 
-void pushSpriteTransition( LGFX_Sprite* dst, int direction=0 )
+template <typename GFXIn, typename GFXout>
+void pushSpriteTransition( GFXout* dst, GFXIn* src, int direction=0)
 {
   uint16_t breadth = 16; // copybuff breadth
 
   if(!vCopyBuff)
-    vCopyBuff = (uint16_t *)ps_malloc(breadth*tft.height()*sizeof(uint16_t));
+    vCopyBuff = (uint16_t *)ps_malloc(breadth*dst->height()*sizeof(uint16_t));
   if(!hCopyBuff)
-    hCopyBuff = (uint16_t *)ps_malloc(breadth*tft.width()*sizeof(uint16_t));
+    hCopyBuff = (uint16_t *)ps_malloc(breadth*dst->width()*sizeof(uint16_t));
 
-  if(!vCopyBuff || !hCopyBuff || dst->width()%breadth!=0 || dst->height()%breadth!=0) {
-    dst->pushSprite(0,0);
+  if(!vCopyBuff || !hCopyBuff || src->width()%breadth!=0 || src->height()%breadth!=0) {
+    src->pushSprite(dst, 0,0);
     return;
   }
 
   if( direction==0 ) { // top to bottom
-    auto chunks = dst->height()/breadth;
+
+    auto chunks = src->height()/breadth;
     for (int chunk=0,y=0;chunk<chunks;chunk++,y=chunk*breadth) {
-      dst->readRect(0, y, dst->width(), breadth, hCopyBuff);
-      tft.pushImage(0, y, dst->width(), breadth, hCopyBuff);
+      src->readRect(0, y, src->width(), breadth, hCopyBuff);
+      dst->pushImage(0, y, src->width(), breadth, hCopyBuff);
     }
+
   } else if( direction > 0 ) { // right to left
-    auto chunks = dst->width()/breadth;
+    auto chunks = src->width()/breadth;
     for(int chunk=chunks-1, x=(chunks-1)*breadth;chunk>=0;chunk--,x=chunk*breadth) {
-      dst->readRect(x, 0, breadth, dst->height(), vCopyBuff);
-      tft.pushImage(x, 0, breadth, dst->height(), vCopyBuff);
+      src->readRect(x, 0, breadth, src->height(), vCopyBuff);
+      dst->pushImage(x, 0, breadth, src->height(), vCopyBuff);
     }
   } else { // left to right
-    auto chunks = dst->width()/breadth;
+    auto chunks = src->width()/breadth;
     for(int chunk=0,x=0;chunk<chunks;chunk++,x=chunk*breadth) {
-      dst->readRect(x, 0, breadth, tft.height(), vCopyBuff);
-      tft.pushImage(x, 0, breadth, tft.height(), vCopyBuff);
+      src->readRect(x, 0, breadth, dst->height(), vCopyBuff);
+      dst->pushImage(x, 0, breadth, dst->height(), vCopyBuff);
     }
   }
+
 }
 
 
-void dim_view(int sparsity = 2)
-{
-  auto game = GWGames[currentGame];
 
-  dim.createSprite(game->view.innerbox.w, sparsity);
-  dim.fillSprite(TFT_BLACK);
-  for(int x=1;x<game->view.innerbox.w;x+=sparsity) {
-    dim.drawPixel(x-1, 0, TFT_WHITE);
-    dim.drawPixel(x,   sparsity/2, TFT_WHITE);
-  }
 
-  for(int y=game->view.innerbox.y;y<game->view.innerbox.y+game->view.innerbox.h;y+=sparsity) {
-    dim.pushSprite(game->view.innerbox.x, y, TFT_BLACK);
-  }
-  dim.deleteSprite();
-}
+// uint8_t sp_to_bin_seq(uint8_t sp)
+// {
+//   // in binary, 0x11, 0x22, 0x33, etc have repeatable patterns
+//   sp = (sp+15) &~15; // to nibble (0...f), will be doubled (1=>11, 2=>22, etc) to form a pattern
+//   const char *fmt = "0x%x%x";
+//   char s[8] = {0};
+//   snprintf(s, 7, fmt, sp, sp);
+//   uint x;
+//   sscanf(s, "%x", &x);
+//   return x&0xff;
+// }
+//
+//
+// template <typename GFX>
+// void dim_screen(GFX* dst, int sparsity = 2)
+// {
+//   static LGFX_Sprite* dimPtr = nullptr;
+//   static int last_sparsity = -1;
+//
+//   if(!dimPtr || dst->width()!=dim.width() || dst->height()!=dim.height() ) {
+//     dim.setColorDepth(1);
+//     dimPtr = (LGFX_Sprite*)dim.createSprite(dst->width(), dst->height());
+//   }
+//
+//   if( sparsity != last_sparsity )
+//   {
+//     uint8_t* dimBuf = (uint8_t*)dim.getBuffer();
+//     uint8_t pattern1 = sp_to_bin_seq(sparsity);
+//     uint8_t pattern2 = 0xff-pattern1; // inverted pattern
+//     uint32_t line_len = dim.width()/8;
+//     for(int i=0;i<dim.bufferLength();i++) {
+//       uint32_t y = i/line_len;
+//       uint8_t bpos = y%8;
+//       uint8_t bval = bitRead(pattern1, bpos);
+//       if( bval == 0 )
+//         dimBuf[i] = pattern1;
+//       else
+//         dimBuf[i] = pattern2;
+//     }
+//   }
+//
+//   dim.pushSprite(dst, 0, 0);
+// }
+//
+//
+// template <typename GFX>
+// void dim_view(GFX* dst, int sparsity = 2)
+// {
+//   auto game = GWGames[currentGame];
+//
+//   dim.createSprite(game->view.innerbox.w, sparsity);
+//   dim.fillSprite(TFT_BLACK);
+//   for(int x=1;x<game->view.innerbox.w;x+=sparsity) {
+//     dim.drawPixel(x-1, 0, TFT_WHITE);
+//     dim.drawPixel(x,   sparsity/2, TFT_WHITE);
+//   }
+//
+//   for(int y=game->view.innerbox.y;y<game->view.innerbox.y+game->view.innerbox.h;y+=sparsity) {
+//     dim.pushSprite(dst ,game->view.innerbox.x, y, TFT_BLACK);
+//   }
+//   dim.deleteSprite();
+// }
 
 
 template <typename GFX>
@@ -339,28 +412,39 @@ void extrudeShadow(GFX* dst, String text, uint32_t x, uint32_t y, uint32_t text_
   dst->drawString(text, x, y);
 }
 
+
+void debugPrintButton(GWTouchButton* btn, const char*msg="Drawing")
+{
+  if( btn )
+    ESP_LOGD(GFX_TAG, "%s button %s [%d:%d] [%dx%d] -> %d (keycode=%d)", msg, btn->name, int(btn->xs), int(btn->ys), int(btn->xe-btn->xs), int(btn->ye-btn->ys), btn->hw_val, btn->keyCode);
+}
+
+
 template <typename GFX>
 void drawBounds(GFX* dst, GWTouchButton *btn)
 { // for debug
+  if(debug_buttons) {
+    debugPrintButton(btn);
+  }
   dst->drawRect(btn->xs, btn->ys, btn->xe-btn->xs, btn->ye-btn->ys, TFT_RED);
 }
 
 
 template <typename GFX>
-void textAt(GFX*dst, const char* str, int32_t x, int32_t y, float fontSize=1.0, lgfx::textdatum_t datum=TL_DATUM)
+void textAt(GFX*dst, const char* str, int32_t x, int32_t y, float fontSizeX=1.0, float fontSizeY=1.0, lgfx::textdatum_t datum=TL_DATUM)
 {
   int extrude_width = 4;
   int shadow_width = 10;
   int cbwidth = extrude_width+shadow_width;
   uint32_t mask_color    = 0x303030u;
   uint32_t text_color    = 0xfbb11eu;
-  uint32_t extrude_color = 0x000000u;
+  uint32_t extrude_color = 0x101010u;
   uint32_t shadow_color  = 0x404040u;
   int32_t posx;
 
   textBox.fillSprite(mask_color);
-  textBox.setFont(&FreeSansBold24pt7b);
-  textBox.setTextSize(fontSize);
+  //textBox.setFont(&FreeSansBold24pt7b);
+  textBox.setTextSize(fontSizeX, fontSizeY);
   textBox.setTextDatum(datum);
 
   switch(datum) {
@@ -379,7 +463,6 @@ void textAt(GFX*dst, const char* str, int32_t x, int32_t y, float fontSize=1.0, 
       return;
   }
 
-
   if(textBox.textWidth(str)+cbwidth>textBox.width()) {
     std::string wrapblah = std::string(str); // textWrap(str,15);
     int n = wrapblah.rfind(' ', 15);
@@ -395,45 +478,6 @@ void textAt(GFX*dst, const char* str, int32_t x, int32_t y, float fontSize=1.0, 
     extrudeShadow(&textBox, str, posx, 0, text_color, extrude_width, extrude_color, shadow_width, shadow_color);
   }
   textBox.pushSprite(dst, x,y, mask_color);
-}
-
-
-
-void draw_menu()
-{
-  dim_view(4);
-
-  auto gamesCount = GWGames.size();
-
-  if( gamesCount == 0 ) {
-    // TODO: filesystem picker
-    return;
-  }
-
-  auto prevGame = currentGame==0 ? GWGames[gamesCount-1] : GWGames[currentGame-1];
-  auto game     = GWGames[currentGame];
-  auto nextGame = currentGame+1>=gamesCount ? GWGames[0] : GWGames[currentGame+1];
-
-  uint32_t bw = tft.width()/20;
-  uint32_t y0 = tft.height()-textBox.height(); //game->view.innerbox.y + bw/2;
-  uint32_t x0 = bw; // game->view.innerbox.x + 20; // ML_DATUM
-
-  uint32_t x1 = tft.width()-(textBox.width()+bw); // game->view.innerbox.x + game->view.innerbox.w - 20; // MR_DATUM
-  uint32_t y1 = tft.height()-textBox.height(); // game->view.innerbox.y + bw + bw/2;
-
-  uint32_t x2 = tft.width()/2 - textBox.width()/2;
-  uint32_t y2 = game->view.innerbox.y + (game->view.innerbox.h/2 - textBox.height()/2);
-
-  String menu = "< " + String(prevGame->name) + " | " + String(nextGame->name) + " > ";
-
-  textAt(&tft, prevGame->name, x0, y0, 1.0, TL_DATUM);
-  textAt(&tft, "<<", x0, y0+textBox.fontHeight()*2.5, 1.0, TL_DATUM);
-  textAt(&tft, nextGame->name, x1, y1, 1.0, TR_DATUM);
-  textAt(&tft, ">>", x1, y1+textBox.fontHeight()*2.5, 1.0, TR_DATUM);
-  textAt(&tft, game->name, x2, y2, 1.1, TC_DATUM);
-
-  String pgStr = String(currentGame+1)+"/"+String(gamesCount); // progress
-  textAt(&tft, pgStr.c_str(), x2, y2+textBox.fontHeight()*2.5, 0.8, TC_DATUM);
 }
 
 
@@ -480,6 +524,194 @@ void fsPicker()
   while(tft.getTouch(&x, &y))
     vTaskDelay(1);// wait for release
 }
+
+
+
+template <typename GFX>
+void drawImageAt(GFX* gfx, GWImage* img, int32_t x, int32_t y, uint32_t transparent_color=0, float zoomx=1.0, float zoomy=1.0)
+{
+  assert(gfx);
+  assert(img);
+  switch(img->type)
+  {
+    case GWImage::JPG   : gfx->drawJpg(img->file.data, img->file.len, x, y, 0, 0, 0, 0, zoomx, zoomy); break;
+    case GWImage::PNG   : gfx->drawPng(img->file.data, img->file.len, x, y, 0, 0, 0, 0, zoomx, zoomy); break;
+    case GWImage::BMP   : gfx->drawBmp(img->file.data, img->file.len, x, y, 0, 0, 0, 0, zoomx, zoomy); break;
+    case GWImage::RAW   : // default, TODO: implement zoom
+    case GWImage::RGB565: gfx->pushImage(x, y, img->width, img->height, img->file.data, transparent_color); break;
+  }
+}
+
+
+template <typename GFX>
+void drawButton(GFX* gfx, GWTouchButton* btn, uint32_t w=100, uint32_t h=100, uint32_t bgcolor=0x123456u, uint32_t fgcolor=0x000000u, uint32_t transcolor=0x654321u)
+{
+  if( btn->xs==btn->xe || btn->ys== btn->ye )
+    return; // unrenderable
+  int32_t x=btn->xs, y=btn->ys;
+  auto img = btn->icon;
+  assert(img);
+  assert(w>=img->width && h>=img->height);
+  gfx->fillRoundRect(x, y, w, h, 8, bgcolor);
+  uint32_t cx = (w/2-img->width/2)-1;
+  uint32_t cy = (h/2-img->height/2)-6;
+  drawImageAt( gfx, img, cx+x, cy+y, transcolor );
+
+  gfx->setFont(&FreeMono9pt7b);
+  gfx->setTextSize(1);
+  gfx->setTextDatum(BC_DATUM);
+
+  uint32_t text_color    = 0xfbb11eu;
+  uint32_t extrude_color = 0x101010u;
+  uint32_t shadow_color  = 0x404040u;
+
+  // extrudeShadow(&tft, name, x, y, text_color, extrude_width, extrude_color, shadow_width, shadow_color);
+  extrudeShadow(gfx, btn->name, x-1+w/2, y+h-6, text_color, 1, extrude_color, 2, shadow_color);
+}
+
+
+template <typename GFX>
+void highlight_box(GFX* gfx, uint32_t stroke_width = 16, uint32_t stroke_height = 8, lgfx::argb8888_t stroke_color = 0xffffff80u )
+{
+  gfx->fillRect(0, 0, stroke_width, gfx->height(), stroke_color);
+  gfx->fillRect(stroke_width, 0, gfx->width()-stroke_width*2, stroke_height, stroke_color);
+  gfx->fillRect(stroke_width, gfx->height()-stroke_height-1, gfx->width()-stroke_width*2, stroke_height, stroke_color);
+  gfx->fillRect(gfx->width()-stroke_width-1, 0, stroke_width, gfx->height(), stroke_color);
+}
+
+
+template <typename GFX>
+void invert_box(GFX* dst, LGFX_Sprite* src, GWBox box)
+{
+  if( dst->width()!=src->width() || dst->height()!=src->height() ) {
+    ESP_LOGE(GFX_TAG, "src and dst dimensions don't match!");
+    return;
+  }
+  uint16_t* buf = (uint16_t*)src->getBuffer();
+  uint32_t buflen = src->bufferLength()/2;
+  for(int x=box.x; x<box.x+box.w; x++) {
+    for(int y=box.y; y<box.y+box.h; y++) {
+      uint32_t idx = x + y*src->width();
+      if( idx>buflen ) {
+        ESP_LOGD(GFX_TAG, "idx(%d)>buflen(%d)", idx, buflen);
+        continue;
+      }
+
+      if( buf[idx] != 0 && buf[idx] != 0xffff ) {
+        buf[idx] = 0xffff-buf[idx];
+      }
+    }
+  }
+  dst->setClipRect( box.x, box.y, box.w, box.h );
+  src->pushSprite(0,0,TFT_BLACK);
+  dst->clearClipRect();
+}
+
+
+
+
+template <typename GFX>
+void draw_menu(GFX* gfx, int transition_direction=0)
+{
+  assert(gfx);
+
+  auto GAWButton = GWGames[currentGame]->getButtonByLabel("GAW");
+  auto GAWBox = GAWButton->getBox();
+
+  uint32_t buflen = MenuSprite.bufferLength()/2;
+  uint16_t* buf = (uint16_t*)MenuSprite.getBuffer();
+
+  for(int i=0;i<buflen;i++) {
+    if(i%3<=1)
+      buf[i] = 0;
+    else
+      buf[i] = 0xffff;
+  }
+
+  // // undo the dim effect over the Game&Watch button (background) as it is needed to exit the menu
+  MenuSprite.fillRect( GAWBox.x, GAWBox.y, GAWBox.w, GAWBox.h, TFT_BLACK );
+
+  // draw the volume button
+  drawVolume(&MenuSprite);
+
+  if( debug_buttons )
+    for( int i=0;i<optionButtonsCount;i++)
+      drawBounds(&MenuSprite, &OptionButtons[i]);
+
+  // draw always-visible icons
+  drawButton(&MenuSprite, &BtnOptionVolP);
+  drawButton(&MenuSprite, &BtnOptionVolM);
+  drawButton(&MenuSprite, &BtnOptionOpts);
+
+  uint16_t BtnOptionColor = BtnOption.enabled() ? TFT_GREEN : TFT_RED;
+  MenuSprite.fillCircle(BtnOption.btn->xs+10, BtnOption.btn->ys+10, 5, BtnOptionColor);
+
+  if( in_options_menu ) {
+    // draw icons from options menu
+    for( int i=0;i<optionButtonsCount;i++) {
+      if(strcmp(OptionButtons[i].name, "Options")==0)
+        break; // don't render the gear icon or any icon listed after
+      if(OptionButtons[i].icon)
+        drawButton(&MenuSprite, &OptionButtons[i] );
+    }
+    // draw colored spot to indicate if the feature is enable or disabled
+    for(int i=0;i<toggleSwitchesCount;i++) {
+      uint16_t OptionColor = toggleSwitches[i].enabled() ? TFT_GREEN : TFT_RED;
+      MenuSprite.fillCircle(toggleSwitches[i].btn->xs+10, toggleSwitches[i].btn->ys+10, 5, OptionColor);
+    }
+  }
+
+  extern void preload_games();
+
+  while( GWGames.size() == 0 ) {
+    fsPicker();
+    preload_games();
+  }
+
+  auto gamesCount = GWGames.size();
+  auto prevGame = currentGame==0 ? GWGames[gamesCount-1] : GWGames[currentGame-1];
+  auto game     = GWGames[currentGame];
+  auto nextGame = currentGame+1>=gamesCount ? GWGames[0] : GWGames[currentGame+1];
+
+  uint32_t bw = 10;
+  textBox.setTextSize(1);
+  uint32_t th = textBox.fontHeight()*2.5;
+
+  uint32_t y00 = MenuSprite.height()-th;
+  uint32_t y01 = MenuSprite.height()/2-th;
+
+  uint32_t y10 = MenuSprite.height()-th;
+  uint32_t y11 = MenuSprite.height()/2-th;
+
+  uint32_t x0 = bw;
+  uint32_t x1 = MenuSprite.width()-(textBox.width()+bw+1);
+
+  String menu = "< " + String(prevGame->name) + " | " + String(nextGame->name) + " > ";
+
+  // previous game
+  textAt(&MenuSprite, prevGame->name, x0, y00, 1.0, 1.0, TL_DATUM);
+  textAt(&MenuSprite, "<<",           x0, y01, 1.0, 4.0, TL_DATUM);
+
+  // next game
+  textAt(&MenuSprite, nextGame->name, x1, y10, 1.0, 1.0, TR_DATUM);
+  textAt(&MenuSprite, ">>",           x1, y11, 1.0, 4.0, TR_DATUM);
+
+  // current game title and list-progress overlaying the game framebuffer
+  uint32_t x2 = MenuSprite.width()/2 - textBox.width()/2;
+  uint32_t y2 = game->view.innerbox.y + (game->view.innerbox.h/2 - textBox.height()/2);
+  textAt(&MenuSprite, game->name, x2, y2, 1.1, 1.1, TC_DATUM);
+  String pgStr = String(currentGame+1)+"/"+String(gamesCount); // progress
+  textAt(&MenuSprite, pgStr.c_str(), x2, y2+th, 0.8, 0.8, TC_DATUM);
+
+  while(!ppa_blend->available())
+    vTaskDelay(1);
+  // blend canvas(bg) with MenuSprite(fg)
+  ppa_blend->exec();
+  while(!ppa_blend->available())
+    vTaskDelay(1);
+  pushSpriteTransition(&tft, &BlendSprite, transition_direction);
+}
+
 
 
 void drawBuffer(uint8_t* data, uint32_t len)

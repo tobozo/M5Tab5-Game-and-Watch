@@ -10,6 +10,16 @@
 #include "./gw_types.h"
 #include "./console.h"
 
+extern GWImage IconSaveRTC;
+extern GWImage IconDebug  ;
+extern GWImage IconFPS    ;
+extern GWImage IconGamepad;
+extern GWImage IconMute   ;
+extern GWImage IconPPA    ;
+extern GWImage IconPrefs  ;
+extern GWImage IconSndM   ;
+extern GWImage IconSndP   ;
+
 namespace GW
 {
 
@@ -30,15 +40,77 @@ namespace GW
     KEY_ESC      = 0x29, // ESC: GAW
     KEY_F1       = 0x3a, // F1: Game A
     KEY_F2       = 0x3b, // F2: Game B
-    KEY_TIME     = 0x3c, // F3: Time
-    KEY_ALARM    = 0x3d, // F4: Alarm
-    KEY_ACL      = 0x3e  // F5: ACL
+    KEY_F3       = 0x3c, // F3: reserved
+    KEY_F4       = 0x3d, // F4: reserved
+    KEY_F5       = 0x3e, // F5: reserved
+    KEY_F6       = 0x3f, // F6: reserved
+    KEY_TIME     = 0x40, // F7: Time
+    KEY_ALARM    = 0x41, // F8: Alarm
+    KEY_ACL      = 0x42  // F9: ACL
   };
 
-  #define GW_BUTTON_ACL -1 // ACL Button performs reset
-  #define GW_BUTTON_GAW -2 // An extra button over the "Game&Watch" logo
+  // extra buttons functionalities for menu routing
+  #define GW_BUTTON_ACL            -1 // ACL Button performs reset
+  #define GW_BUTTON_GAW            -2 // An extra button over the "Game&Watch" logo
+  #define GW_BUTTON_TOGGLE_AUDIO   -3 // audio_enabled
+  #define GW_BUTTON_TOGGLE_USB_HID -4 // usbhost_enabled
+  #define GW_BUTTON_TOGGLE_PPA     -5 // ppa_enabled
+  #define GW_BUTTON_TOGGLE_FPS     -6 // show_fps
+  #define GW_BUTTON_TOGGLE_DEBUG   -7 // debug_buttons
+  #define GW_BUTTON_PREFS          -8 // in_options_menu
+  #define GW_BUTTON_NONE         -999 // do nothing
 
-  // Game & Watch single screen layouts, with their respective buttons layouts
+
+  GWTouchButton BtnOptionPPA  (/*🚀*/"HW Accel",  400,    8,    0,  0, GW_BUTTON_TOGGLE_PPA,     KEY_F3,       true, &IconPPA);     // ppa_enabled
+  GWTouchButton BtnOptionTime (/*🕑*/"Set Time",  525,    8,  100, 90, GW_BUTTON_TIME,           KEY_TIME,     true, &IconSaveRTC); // save game time to rtc
+  GWTouchButton BtnOptionSnd  (/*🔇*/"Mute",      650,    8,  100, 90, GW_BUTTON_TOGGLE_AUDIO,   KEY_F1,       true, &IconMute);    // audio_enabled
+  GWTouchButton BtnOptionJoy  (/*🕹*/"USB-HID",   775,    8,  100, 90, GW_BUTTON_TOGGLE_USB_HID, KEY_F2,       true, &IconGamepad); // usbhost_enabled
+  GWTouchButton BtnOptionFPS  (/*🎞*/"Show FPS",  900,    8,  100, 90, GW_BUTTON_TOGGLE_FPS,     KEY_F4,       true, &IconFPS);     // show_fps
+  GWTouchButton BtnOptionDbg  (/*🐞*/"Debug",    1025,    8,  100, 90, GW_BUTTON_TOGGLE_DEBUG,   KEY_F5,       true, &IconDebug);   // debug_buttons
+  GWTouchButton BtnOptionOpts (/*⚙*/"Options",  1163,    8,  100, 90, GW_BUTTON_PREFS,          KEY_F6,       true, &IconPrefs);   // toggle options menu
+  GWTouchButton BtnOptionVolP (/*🔈*/"Vol-",      439,  611,  100, 90, GW_BUTTON_DOWN,           ARROW_DOWN,   true, &IconSndM);    // increase volume
+  GWTouchButton BtnOptionVolM (/*🔈*/"Vol+",      739,  611,  100, 90, GW_BUTTON_UP,             ARROW_UP,     true, &IconSndP);    // decrease volume
+  GWTouchButton BtnOptionTerm (/*🗂*/"term",        0,    0, 1280, 90, GW_BUTTON_NONE,           KEYCODE_NONE, true); // Touch propagation terminator (prevents bubbling)
+
+
+  // UI Menu buttons (extra options, not related to Game&Watch UI)
+  GWTouchButton OptionButtons[] = {
+    BtnOptionVolP,
+    BtnOptionVolM,
+    BtnOptionTime,
+    BtnOptionSnd,
+    BtnOptionJoy,
+    BtnOptionPPA,
+    BtnOptionFPS,
+    BtnOptionDbg,
+    BtnOptionOpts,
+    BtnOptionTerm
+  };
+
+  const size_t optionButtonsCount = sizeof(OptionButtons)/sizeof(GWTouchButton);
+
+  // Wrappers around some option buttons used as switches
+  GWToggleSwitch BtnOption( &BtnOptionOpts, &in_options_menu );
+  GWToggleSwitch BtnDbg   ( &BtnOptionDbg,  &debug_buttons   );
+  GWToggleSwitch BtnFps   ( &BtnOptionFPS,  &show_fps        );
+  GWToggleSwitch BtnJoy   ( &BtnOptionJoy,  &usbhost_enabled );
+  GWToggleSwitch BtnMute  ( &BtnOptionSnd,  &audio_enabled   );
+
+  GWToggleSwitch toggleSwitches[] =
+  {
+    BtnOption,
+    BtnDbg   ,
+    BtnFps   ,
+    BtnJoy   ,
+    BtnMute
+  };
+
+  const size_t toggleSwitchesCount = sizeof(toggleSwitches)/sizeof(GWToggleSwitch);
+
+  // volume box position and dimensions
+  GWBox volumeBox = { 539, 661, 200, 48 };
+
+  // Game&Watch single screen layouts, with their respective buttons layouts
 
   namespace SILVER_SCREEN
   {

@@ -21,8 +21,6 @@
 
 static fs::FS* gwFS = nullptr;//&LittleFS;
 
-static bool sdcard_ok = false;
-static bool littlefs_ok = false;
 
 char *createPath(const char* dir, const char* basename, const char* extension)
 {
