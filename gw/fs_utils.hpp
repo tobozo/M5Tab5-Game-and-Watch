@@ -11,8 +11,9 @@
 
 #include <SD_MMC.h>
 #include <LittleFS.h>     // builtin
-#include <BufferStream.h> // https://github.com/Industrial-Shields/arduino-BufferStream
+//#include <BufferStream.h> // https://github.com/Industrial-Shields/arduino-BufferStream
 #include <ESP32-targz.h>  // https://github.com/tobozo/ESP32-targz
+#include "./bufferstream.hpp"
 
 
 #define GW_ROMS_DIR     "/roms"
@@ -160,6 +161,8 @@ bool expand_asset(GWFile *asset, Stream* gzStream, uint32_t gzlen)
     return false;
   }
 
+  //size_t assetLen = asset->len+63 & ~63;
+  //asset->data = (uint8_t*)heap_caps_aligned_calloc(64, 1, assetLen, MALLOC_CAP_SPIRAM);
   asset->data = (unsigned char *)ps_calloc(1, asset->len+1);
   if( asset->data == NULL ) {
     tft_error("Malloc error (%d bytes)", (int)asset->len+1);

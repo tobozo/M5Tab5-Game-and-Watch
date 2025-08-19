@@ -13,9 +13,9 @@
 struct GWFile
 {
 public:
-  char *path{nullptr};          // file path
-  unsigned char *data{nullptr}; // data
-  uint32_t len{0};              // file size
+  char *path{nullptr}; // file path
+  void *data{nullptr}; // data
+  uint32_t len{0};     // bytes count
 
   GWFile() { }
   template <typename T>
@@ -29,7 +29,11 @@ public:
   }
 };
 
-
+// namespace lgfx
+// {
+//   class LGFX_Sprite;
+// }
+//using LGFX_Sprite = lgfx::LGFX_Sprite;
 
 struct GWImage
 {
@@ -40,7 +44,7 @@ struct GWImage
     BMP,
     RGB565,
   };
-  GWFile file;
+  GWFile *file;
   file_type type;
   uint32_t width;
   uint32_t height;
@@ -137,6 +141,7 @@ namespace m5
 }
 
 m5::LGFX_PPA_BLEND* ppa_blend = nullptr;
+m5::LGFX_PPA_SRM*   ppa_srm = nullptr;
 
 // Game holder
 struct GWGame
@@ -145,6 +150,7 @@ struct GWGame
   const char* romname{nullptr}; // Rom name e.g. "pchute"
   GWLayout view;                // Inner/Outer emulator view
   GWTouchButton* btns{nullptr}; // Array of touch buttons
+  m5::LGFX_PPA_SRM* ppa_srm{nullptr}; // scale/rotate/mirror ppa object
   const size_t btns_count{0};   // Amount of buttons in the array
 
   // jpg original size (image will be zoomed to fit the outer view)
@@ -158,9 +164,10 @@ struct GWGame
   GWFile romFile = GWFile();
   GWFile jpgFile = GWFile();
 
+  GWImage *bgImage{nullptr};
+
   bool preloaded{false};
 
-  m5::LGFX_PPA_SRM* ppa_srm{nullptr};
 
   template <size_t N>
   GWGame(const char* name, const char*romname, GWLayout view, GWTouchButton (&tbtns)[N])

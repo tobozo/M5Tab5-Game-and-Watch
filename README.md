@@ -112,7 +112,7 @@ If using a SD card, put the resized jpg files in the `/artworks` folder, if usin
   - [M5GFX](https://github.com/M5Stack/M5GFX)
   - [M5Unified](https://github.com/M5Stack/M5Unified)
   - [ESP32-targz](https://github.com/tobozo/ESP32-targz)
-  - [arduino-BufferStream](https://github.com/Industrial-Shields/arduino-BufferStream)
+  - ~~[arduino-BufferStream](https://github.com/Industrial-Shields/arduino-BufferStream)~~ (fixed version now shipped with this project)
 - Optional (if not using the SD card): select a partition scheme where SPIFFS size is between 1MB and 3MB
 - Compile and flash
 - Optional (if not using the SD card): use the sketch data upload utility to upload the roms/artworks
@@ -128,3 +128,4 @@ If using a SD card, put the resized jpg files in the `/artworks` folder, if usin
  - This project was inspired by -> https://github.com/slowlane112/Esp32-Game-and-Watch
  - Awesome rom shrinker Tool -> https://github.com/bzhxx/LCD-Game-Shrinker
  - Rom shrinking Tutorial -> https://gist.github.com/DNA64/16fed499d6bd4664b78b4c0a9638e4ef
+ - Arduino-BufferStream -> https://github.com/Industrial-Shields/arduino-BufferStream

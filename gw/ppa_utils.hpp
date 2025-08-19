@@ -14,6 +14,7 @@ extern "C"
  #include "driver/ppa.h"
  #include "esp_heap_caps.h"
  #include "esp_cache.h"
+ #include "esp_private/esp_cache_private.h"
 }
 
 extern GWBox GWFBBox;
@@ -22,6 +23,9 @@ namespace m5
 {
   // NOTE: those are partial implementations specialized for the needs of this application
 
+
+  const char* SRM_TAG = "LGFX_PPA_SRM";
+  const char* BLEND_TAG = "LGFX_PPA_BLEND";
 
   static bool lgfx_ppa_transfer_done = true;
 
@@ -76,27 +80,32 @@ namespace m5
     void setup(GWBox fg, void *fg_buf, GWBox bg, void *bg_buf, bool async = true, bool use_semaphore = false)
     {
       if(!fg_buf || !bg_buf || !output_buffer) {
-        ESP_LOGE("LGFX_PPA_BLEND", "At least one buffer is missing");
+        ESP_LOGE(BLEND_TAG, "At least one buffer is missing");
         return;
       }
 
       // The blocks' width/height of FG and BG should be identical, and are the width/height values for the output block.
       if( fg.w != output_w || fg.h != output_h || bg.w != output_w || bg.h != output_h ) {
-        ESP_LOGE("LGFX_PPA_BLEND", "Dimensions mismatch");
+        ESP_LOGE(BLEND_TAG, "Dimensions mismatch");
         return;
       }
 
       if(!async && use_semaphore) {
-        ESP_LOGW("LGFX_PPA_BLEND", "use_semaphore=true but async=false, async value will be ignored");
+        ESP_LOGW(BLEND_TAG, "use_semaphore=true but async=false, async value will be ignored");
         async = true;
       }
 
       this->use_semaphore = use_semaphore;
       this->async = async;
 
-      Serial.printf("Setting up PPA-Blend-%s%s\n",
+      size_t data_cache_line_size;
+
+      ESP_ERROR_CHECK(esp_cache_get_alignment(MALLOC_CAP_SPIRAM, &data_cache_line_size));
+
+      Serial.printf("Setting up PPA-Blend-%s%s (data_cache_line_size=%d)\n",
         async?"async":"sync",
-        use_semaphore?"+mux":""
+        use_semaphore?"+mux":"",
+        data_cache_line_size
       );
 
       if( ppa_semaphore == NULL )
@@ -108,7 +117,7 @@ namespace m5
 
       if(async && use_semaphore)
         ppa_event_cb.on_trans_done = lgfx_ppa_cb_sem_func;
-      else if(async)
+      else // if(async)
         ppa_event_cb.on_trans_done = lgfx_ppa_cb_bool_func;
 
       #pragma GCC diagnostic push
@@ -154,8 +163,12 @@ namespace m5
       oper_config.in_fg = in_fg;
       oper_config.out = output;
 
-      oper_config.bg_alpha_update_mode = PPA_ALPHA_FIX_VALUE;
-      oper_config.bg_alpha_fix_val = 0x80;
+      oper_config.bg_alpha_update_mode = PPA_ALPHA_NO_CHANGE;
+      //oper_config.bg_alpha_fix_val = 0x80;
+
+      oper_config.bg_ck_rgb_low_thres = (color_pixel_rgb888_data_t) {};
+      oper_config.bg_ck_rgb_high_thres = (color_pixel_rgb888_data_t) {};
+
 
       oper_config.fg_alpha_update_mode = PPA_ALPHA_NO_CHANGE;
 
@@ -177,8 +190,6 @@ namespace m5
       oper_config.ck_reverse_bg2fg = false;
 
       oper_config.mode = async ? PPA_TRANS_MODE_NON_BLOCKING : PPA_TRANS_MODE_BLOCKING;
-
-
 
       if (async && use_semaphore) {
         oper_config.user_data = (void *)ppa_semaphore; // attach semaphore
@@ -206,21 +217,22 @@ namespace m5
           return false;
       }
 
-      if( async /*oper_config.mode == PPA_TRANS_MODE_NON_BLOCKING*/ ) {
+      //if( async /*oper_config.mode == PPA_TRANS_MODE_NON_BLOCKING*/ ) {
         lgfx_ppa_transfer_done = false;
-      }
+      //}
 
       if( ESP_OK != ppa_register_client(&ppa_client_config, &ppa_client_handle) )
         return false;
       if( ESP_OK != ppa_client_register_event_callbacks(ppa_client_handle, &ppa_event_cb) )
         return false;
 
-      //esp_cache_msync((void*)in.buffer, in.block_w*in.block_h*sizeof(uint16_t), ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+      //esp_cache_msync((void*)in_bg.buffer, in_bg.block_w*in_bg.block_h*sizeof(uint16_t), ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+      //esp_cache_msync((void*)in_fg.buffer, in_fg.block_w*in_fg.block_h*sizeof(uint16_t), ESP_CACHE_MSYNC_FLAG_DIR_C2M);
       ppa_do_blend(ppa_client_handle, &oper_config);
-      //esp_cache_msync(out.buffer, out.buffer_size, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
+      //esp_cache_msync((void*)output.buffer, output.block_w*output.block_h*sizeof(uint16_t), ESP_CACHE_MSYNC_FLAG_DIR_M2C);
 
-      if(!async)
-        lgfx_ppa_transfer_done = true;
+      // if(!async)
+      //   lgfx_ppa_transfer_done = true;
       return true;
     }
 
@@ -228,12 +240,24 @@ namespace m5
     {
       if(!enabled)
         return false;
-      if( oper_config.mode == PPA_TRANS_MODE_NON_BLOCKING )
+      //if( oper_config.mode == PPA_TRANS_MODE_NON_BLOCKING )
         return lgfx_ppa_transfer_done;
-      return true; // mode=PPA_TRANS_MODE_BLOCKING, exec is always available
+      //return true; // mode=PPA_TRANS_MODE_BLOCKING, exec is always available
     }
 
   };
+
+
+  // compensate for typeid() being disabled
+  template <typename T> const char *TYPE_NAME()
+  {
+    #ifdef _MSC_VER
+      return __FUNCSIG__;
+    #else
+      return __PRETTY_FUNCTION__;
+    #endif
+  }
+
 
 
 
@@ -247,37 +271,112 @@ namespace m5
     bool async = false;
     bool use_semaphore = false;
     bool enabled = false;
-    const uint32_t output_w;// = M5.Display.width();
-    const uint32_t output_h;// = M5.Display.height();
-    const uint8_t output_bytes_per_pixel;
+    bool inited = false;
+    const uint32_t output_w;
+    const uint32_t output_h;
+    uint8_t output_bytes_per_pixel;
     void* output_buffer;
+    ppa_srm_rotation_angle_t output_rotation = PPA_SRM_ROTATION_ANGLE_0;
+    bool output_mirror_x = false;
+    bool output_mirror_y = false;
+
+  protected:
+    M5GFX* outputGFX;
+
   public:
 
     ppa_in_pic_blk_config_t in;
     ppa_out_pic_blk_config_t out;
     ppa_srm_oper_config_t oper_config;
 
-    LGFX_PPA_SRM(size_t output_w, size_t output_h, uint8_t bytes_per_pixel, void*buffer)
-    : output_w(output_w), output_h(output_h), output_bytes_per_pixel(bytes_per_pixel), output_buffer(buffer)
+
+    ~LGFX_PPA_SRM() {
+      if( ppa_client_handle )
+        ppa_unregister_client(ppa_client_handle);
+    }
+
+    template <typename GFX>
+    LGFX_PPA_SRM(GFX* out) : output_w(out->width()), output_h(out->height()), outputGFX((M5GFX*)out)
+    {
+      static const char* display_types[] = {
+        "Unknown",
+        "Panel DSI",
+        "LGFX Sprite",
+      };
+      int display_id = 0;
+      if( std::is_same<GFX, M5GFX>::value || std::is_same<GFX, LovyanGFX>::value  ) {
+        output_buffer = ((m5gfx::Panel_DSI*)outputGFX->getPanel())->config_detail().buffer;
+        output_bytes_per_pixel = 2; // panelDSI->getColorDepth() returns a weird value, so 16bits colors it is...
+        display_id = 1;
+      } else if( std::is_same<GFX, LGFX_Sprite>::value ) {
+        if( outputGFX->getColorDepth() < 16 ) {
+          ESP_LOGE(SRM_TAG, "Unsupported bit depth: %d", outputGFX->getColorDepth() );
+          return;
+        }
+        output_bytes_per_pixel = out->getColorDepth()/8;
+        output_buffer = ((LGFX_Sprite*)outputGFX)->getBuffer();
+        display_id = 2;
+      } else {
+        ESP_LOGE(SRM_TAG, "Unsupported type: %s", TYPE_NAME<GFX>() );
+        return;
+      }
+      switch( outputGFX->getRotation() )
+      {
+        case 0: output_rotation = PPA_SRM_ROTATION_ANGLE_0  ; output_mirror_x = false; output_mirror_y = false; break;
+        case 1: output_rotation = PPA_SRM_ROTATION_ANGLE_270; output_mirror_x = false; output_mirror_y = false; break;
+        case 2: output_rotation = PPA_SRM_ROTATION_ANGLE_180; output_mirror_x = false; output_mirror_y = false; break;
+        case 3: output_rotation = PPA_SRM_ROTATION_ANGLE_90 ; output_mirror_x = false; output_mirror_y = false; break;
+        case 4: output_rotation = PPA_SRM_ROTATION_ANGLE_0  ; output_mirror_x = false; output_mirror_y = true ; break;
+        case 5: output_rotation = PPA_SRM_ROTATION_ANGLE_270; output_mirror_x = true ; output_mirror_y = false; break;
+        case 6: output_rotation = PPA_SRM_ROTATION_ANGLE_180; output_mirror_x = true ; output_mirror_y = false; break;
+        case 7: output_rotation = PPA_SRM_ROTATION_ANGLE_90 ; output_mirror_x = false; output_mirror_y = true ; break;
+      }
+      ESP_LOGI(SRM_TAG, "[%s] %s@%dBpp, rot=%d=>%d, mirrorx=%d, mirrory=%d",
+        TYPE_NAME<GFX>(),
+        display_types[display_id],
+        output_bytes_per_pixel,
+        outputGFX->getRotation(),
+        output_rotation,
+        output_mirror_x,
+        output_mirror_y
+      );
+      inited = true;
+    }
+
+
+    LGFX_PPA_SRM(size_t output_w, size_t output_h, uint8_t bytes_per_pixel, void*buffer, ppa_srm_rotation_angle_t output_rotation)
+    : output_w(output_w), output_h(output_h), output_bytes_per_pixel(bytes_per_pixel), output_buffer(buffer), output_rotation(output_rotation)
     {
     }
 
     void setup(GWBox input,  double scale_x, double scale_y, void *buffer, bool async = true, bool use_semaphore = false)
     {
+      if(!inited) {
+        ESP_LOGE(SRM_TAG, "Can't setup after a failed init");
+        return;
+      }
+
       if(!buffer) {
-        ESP_LOGE("LGFX_PPA_SRM", "Buffer missing");
+        ESP_LOGE(SRM_TAG, "Buffer missing");
+        enabled = false;
+        return;
+      }
+
+      if(scale_x<=0 || scale_y <=0) {
+        ESP_LOGE(SRM_TAG, "Bad scale values");
+        enabled = false;
         return;
       }
 
       if(!async && use_semaphore) {
-        ESP_LOGW("LGFX_PPA_SRM", "use_semaphore=true but async=false, async value will be ignored");
+        ESP_LOGW(SRM_TAG, "use_semaphore=true but async=false, async value will be ignored");
         async = true;
       }
 
       this->use_semaphore = use_semaphore;
       this->async = async;
 
-      Serial.printf("Setting up PPA-SRM-%s%s to box @[x=%d,y=%d] -> in[w=%d,h=%d] * [zoomx=%.2f,zoomy=%.2f] = out[w=%d,h=%d]\n",
+      ESP_LOGD(SRM_TAG, "Setting up PPA-SRM-%s%s to box @[x=%d,y=%d] -> in[w=%d,h=%d] * [zoomx=%.2f,zoomy=%.2f] = out[w=%d,h=%d]",
         async?"async":"sync",
         use_semaphore?"+mux":"",
         (int)input.x, (int)input.y, (int)input.w, (int)input.h,
@@ -294,7 +393,7 @@ namespace m5
 
       if(async && use_semaphore)
         ppa_event_cb.on_trans_done = lgfx_ppa_cb_sem_func;
-      else if(async)
+      else// if(async)
         ppa_event_cb.on_trans_done = lgfx_ppa_cb_bool_func;
 
       oper_config = getCfg(GWFBBox, buffer, input, scale_x, scale_y);
@@ -319,9 +418,9 @@ namespace m5
           return false;
       }
 
-      if( async /*oper_config.mode == PPA_TRANS_MODE_NON_BLOCKING*/ ) {
+      //if( async /*oper_config.mode == PPA_TRANS_MODE_NON_BLOCKING*/ ) {
         lgfx_ppa_transfer_done = false;
-      }
+      //}
 
       if( ESP_OK != ppa_register_client(&ppa_client_config, &ppa_client_handle) )
         return false;
@@ -332,8 +431,8 @@ namespace m5
       ppa_do_scale_rotate_mirror(ppa_client_handle, &oper_config);
       //esp_cache_msync(out.buffer, out.buffer_size, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
 
-      if(!async)
-        lgfx_ppa_transfer_done = true;
+      // if(!async)
+      //   lgfx_ppa_transfer_done = true;
       return true;
     }
 
@@ -385,7 +484,7 @@ namespace m5
       {
         .in  = getInBlockCfg(input, buffer),
         .out = getOutBlockCfg(output),
-        .rotation_angle = tft.getRotation()==1 ? PPA_SRM_ROTATION_ANGLE_270 : PPA_SRM_ROTATION_ANGLE_90,
+        .rotation_angle = output_rotation, // tft.getRotation()==1 ? PPA_SRM_ROTATION_ANGLE_270 : PPA_SRM_ROTATION_ANGLE_90,
         .scale_x = scale_x,
         .scale_y = scale_y,
         .rgb_swap = 0,

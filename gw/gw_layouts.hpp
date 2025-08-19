@@ -61,7 +61,7 @@ namespace GW
   #define GW_BUTTON_NONE         -999 // do nothing
 
 
-  GWTouchButton BtnOptionPPA  (/*🚀*/"HW Accel",  400,    8,    0,  0, GW_BUTTON_TOGGLE_PPA,     KEY_F3,       true, &IconPPA);     // ppa_enabled
+  //GWTouchButton BtnOptionPPA  (/*🚀*/"HW Accel",  400,    8,    0,  0, GW_BUTTON_TOGGLE_PPA,     KEY_F3,       true, &IconPPA);     // ppa_enabled
   GWTouchButton BtnOptionTime (/*🕑*/"Set Time",  525,    8,  100, 90, GW_BUTTON_TIME,           KEY_TIME,     true, &IconSaveRTC); // save game time to rtc
   GWTouchButton BtnOptionSnd  (/*🔇*/"Mute",      650,    8,  100, 90, GW_BUTTON_TOGGLE_AUDIO,   KEY_F1,       true, &IconMute);    // audio_enabled
   GWTouchButton BtnOptionJoy  (/*🕹*/"USB-HID",   775,    8,  100, 90, GW_BUTTON_TOGGLE_USB_HID, KEY_F2,       true, &IconGamepad); // usbhost_enabled
@@ -75,12 +75,12 @@ namespace GW
 
   // UI Menu buttons (extra options, not related to Game&Watch UI)
   GWTouchButton OptionButtons[] = {
+    //BtnOptionPPA,
     BtnOptionVolP,
     BtnOptionVolM,
     BtnOptionTime,
     BtnOptionSnd,
     BtnOptionJoy,
-    BtnOptionPPA,
     BtnOptionFPS,
     BtnOptionDbg,
     BtnOptionOpts,
