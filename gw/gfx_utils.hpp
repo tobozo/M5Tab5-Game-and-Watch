@@ -204,7 +204,7 @@ void drawVolume(GFX* gfx, uint16_t* buf=nullptr )
     uint32_t real_width = (volume_bar_width*steps)+(volume_bar_marginx*(steps-1));
     int leftover = width-real_width;
     // Serial.printf("Drawing volume %d (leftover pixels=%d)\n", volume, leftover);
-    for(int i=0;i<steps;i++) {
+    for(int i=0;i<stgweps;i++) {
       uint32_t step_volume = i*volume_increment;
       if( volume!=0 && volume>=step_volume ) {
         volumeColor = getHeatMapColor(step_volume, 0, 0x7fff, heatMapColors);
