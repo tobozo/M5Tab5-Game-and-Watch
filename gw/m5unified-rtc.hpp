@@ -185,8 +185,8 @@ namespace m5
       return 0;
     }
 
-    if ((address + len) > 3) { // Data size over RAM size
-      len = 3 - address;
+    if ((address + len) > 4) { // Data size over RAM size
+      return 0;
     }
 
     if (!writeRegister(0x20 + address, value, len)) {
@@ -203,8 +203,8 @@ namespace m5
       return false;
     }
 
-    if ((address + len) > 3) { // Data size over RAM size
-      len = 3 - address;
+    if ((address + len) > 4) { // Data size over RAM size
+      return false;
     }
 
     return readRegister(0x20 + address, value, len);
