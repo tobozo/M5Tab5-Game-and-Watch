@@ -39,18 +39,12 @@ void initLittleFS()
 
 void initSDCard()
 {
-  // Serial.println("SD_MMC Start...");
   if (!SD_MMC.begin("/sdcard", false)) {  // false = 4-bit mode
-    // Serial.println("SD_MMC 4bit mode not available");
     if (!SD_MMC.begin("/sdcard", true)) {  // true = 1-bit mode
       Serial.println("SD_MMC 1 bit mode not available");
       sdcard_ok = false;
       return;
-    } else {
-      // Serial.println("SD_MMC 1 bit mode available");
     }
-  } else {
-    // Serial.println("SD_MMC 4 bit mode available");
   }
 
   uint8_t cardType = SD_MMC.cardType();
@@ -61,19 +55,6 @@ void initSDCard()
   }
 
   sdcard_ok = true;
-  // Serial.print("SD Card type: ");
-  // if (cardType == CARD_MMC) {
-  //   Serial.print("MMC ");
-  // } else if (cardType == CARD_SD) {
-  //   Serial.print("SDSC ");
-  // } else if (cardType == CARD_SDHC) {
-  //   Serial.print("SDHC ");
-  // } else {
-  //   Serial.print("UNKNOWN ");
-  // }
-  //
-  // uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024 * 1024);
-  // Serial.println(", size: " + String(cardSize) + "GB");
 }
 
 
@@ -161,8 +142,6 @@ bool expand_asset(GWFile *asset, Stream* gzStream, uint32_t gzlen)
     return false;
   }
 
-  //size_t assetLen = asset->len+63 & ~63;
-  //asset->data = (uint8_t*)heap_caps_aligned_calloc(64, 1, assetLen, MALLOC_CAP_SPIRAM);
   asset->data = (unsigned char *)ps_calloc(1, asset->len+1);
   if( asset->data == NULL ) {
     tft_error("Malloc error (%d bytes)", (int)asset->len+1);
@@ -216,11 +195,6 @@ bool load_asset(GWFile* asset)
     Serial.println("Invalid file name");
     return false; // invalid file name (e.g. shortest filename is "a.gz")
   }
-
-  // if(!gwFS->exists(asset->path)) {
-  //   Serial.printf("File %s does not exist\n", asset->path);
-  //   return false; // not found!
-  // }
 
   bool is_gz = (strcmp(asset->path + fname_len - 3, ".gz") == 0);
 

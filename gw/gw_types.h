@@ -9,12 +9,13 @@
 
 #include <FS.h>
 
+
 // Ram file holder
 struct GWFile
 {
 public:
-  char *path{nullptr}; // file path
-  void *data{nullptr}; // data
+  char *path{nullptr}; // file path (optional)
+  void *data{nullptr}; // data (bytes array or struct/class pointer)
   uint32_t len{0};     // bytes count
 
   GWFile() { }
@@ -29,14 +30,11 @@ public:
   }
 };
 
-// namespace lgfx
-// {
-//   class LGFX_Sprite;
-// }
-//using LGFX_Sprite = lgfx::LGFX_Sprite;
 
+// Wrapper for GWFile containing image data
 struct GWImage
 {
+public:
   enum file_type {
     RAW,
     JPG,
@@ -44,12 +42,13 @@ struct GWImage
     BMP,
     RGB565,
   };
-  GWFile *file;
-  file_type type;
-  uint32_t width;
-  uint32_t height;
+  GWImage() { }
+  GWImage(GWFile *file, file_type type, uint32_t width, uint32_t height) : file(file), type(type), width(width), height(height) { }
+  GWFile *file{nullptr};
+  file_type type{RAW};
+  uint32_t width{0};
+  uint32_t height{0};
 };
-
 
 
 // GWBox: unshifted/unscaled coords/dimensions (until normalized)
@@ -57,12 +56,14 @@ struct GWBox
 {
   double x{0}, y{0}; // 0..1 until normalized
   double w{0}, h{0}; // 0..1 until normalized
+  bool normalized{false};
   void normalize(GWBox box)
   {
     x = x * box.w + box.x;
     y = y * box.h + box.y;
     w = w * box.w;
     h = h * box.h;
+    normalized = true;
   }
 };
 
@@ -72,12 +73,15 @@ struct GWTouchButton
 {
 public:
   const char* name{nullptr};
+  // touch area
   double xs{0}, ys{0}; // 0..1 until normalized
   double xe{0}, ye{0}; // 0..1 until normalized
+  // button signal for GW emulator
   const uint32_t hw_val{0}; // button code for the emulator
   bool normalized{false};
+  // USB keycode for touch<=>HID binding
   const uint8_t keyCode{0};
-  GWImage* icon{nullptr}; // optional image
+  GWImage* icon{nullptr}; // optional button image
 
   GWTouchButton(const char* name, double x, double y, double w, double h, uint32_t hw_val,  uint8_t keyCode, bool normalized=false, GWImage* icon=nullptr)
   : name(name), xs(x), ys(y), xe(w+x), ye(h+y), hw_val(hw_val), normalized(normalized), keyCode(keyCode), icon(icon) { }
@@ -109,6 +113,7 @@ public:
 };
 
 
+// Buttons with icon and on/off indicator
 struct GWToggleSwitch
 {
 public:
@@ -132,16 +137,14 @@ struct GWLayout
 };
 
 
-
-namespace m5
+// forward declaration for ppa operations
+namespace lgfx
 {
   // hw accel for pixels needed by GWGame struct
-  class LGFX_PPA_SRM;
-  class LGFX_PPA_BLEND;
+  class PPASrm;
+  class PPABlend;
 }
 
-m5::LGFX_PPA_BLEND* ppa_blend = nullptr;
-m5::LGFX_PPA_SRM*   ppa_srm = nullptr;
 
 // Game holder
 struct GWGame
@@ -150,24 +153,26 @@ struct GWGame
   const char* romname{nullptr}; // Rom name e.g. "pchute"
   GWLayout view;                // Inner/Outer emulator view
   GWTouchButton* btns{nullptr}; // Array of touch buttons
-  m5::LGFX_PPA_SRM* ppa_srm{nullptr}; // scale/rotate/mirror ppa object
+
+  lgfx::PPASrm* ppa_tft{nullptr}; // scale/rotate/mirror ppa object for target: TFT
+  lgfx::PPASrm* ppa_fb{nullptr}; // scale/rotate/mirror ppa object for target : BGSprite
+
   const size_t btns_count{0};   // Amount of buttons in the array
 
-  // jpg original size (image will be zoomed to fit the outer view)
+  // jpg background image data + dimensions without scaling
+  GWImage *bgImage{nullptr};
   uint32_t jpg_width{0};
   uint32_t jpg_height{0};
+  // background image will be zoomed to fit the outer view
   float jpg_zoom{2.0};
-
+  // emulator panel will be zoomed to fit the inner view
   double zoomx{1.0f}; // view.input to output framebuffer
   double zoomy{1.0f}; // view.input to output framebuffer
 
   GWFile romFile = GWFile();
   GWFile jpgFile = GWFile();
 
-  GWImage *bgImage{nullptr};
-
   bool preloaded{false};
-
 
   template <size_t N>
   GWGame(const char* name, const char*romname, GWLayout view, GWTouchButton (&tbtns)[N])
@@ -185,8 +190,7 @@ struct GWGame
     return nullptr;
   }
 
-
-  // stretch jpeg, normalize buttons and inner box
+  // scale jpeg, normalize buttons, inner and outer box
   void adjustLayout(uint32_t width, uint32_t height)
   {
     assert(width>0 && height>0);
@@ -205,12 +209,16 @@ struct GWGame
       float offset_x = float( width/2.0f) - layout_width/2.0f;
       float offset_y = float(height/2.0f) - layout_height/2.0f;
       // populate outer view
-      view.outerbox.normalize({offset_x, offset_y, layout_width, layout_height});
+
+      if(!view.outerbox.normalized)
+        view.outerbox.normalize({offset_x, offset_y, layout_width, layout_height});
         //Serial.printf("view [outer-normalized] = [%d:%d][%d*%d]\n", (int)view.outerbox.x, (int)view.outerbox.y, (int)view.outerbox.w, (int)view.outerbox.h);
       // normalize inner view
-      view.innerbox.normalize( view.outerbox );
-      view.innerbox.w = int(view.innerbox.w/16.0f) * 16.0f; // round to nearest multiple of 16
-      view.innerbox.h = int(view.innerbox.h/16.0f) * 16.0f; // round to nearest multiple of 16
+      if(!view.innerbox.normalized) {
+        view.innerbox.normalize( view.outerbox );
+        view.innerbox.w = int(view.innerbox.w/16.0f) * 16.0f; // round to nearest multiple of 16
+        view.innerbox.h = int(view.innerbox.h/16.0f) * 16.0f; // round to nearest multiple of 16
+      }
       //Serial.printf("view [inner-normalized] = [%d:%d][%d*%d]\n", (int)view.innerbox.x, (int)view.innerbox.y, (int)view.innerbox.w, (int)view.innerbox.h);
       // buttons are shared across screen types, so normalize separately
       for(int i=0;i<btns_count;i++) {
@@ -224,6 +232,7 @@ struct GWGame
 };
 
 
+// for USB-HID debugging
 struct gw_kbd_debugger
 {
   void printKey(int byteNum, uint8_t byteVal)
@@ -300,6 +309,3 @@ static bool littlefs_ok = false;
 // togglable hardware features
 static bool audio_enabled   = true;
 static bool usbhost_enabled = true;
-static bool ppa_enabled     = true;
-
-

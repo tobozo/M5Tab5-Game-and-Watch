@@ -140,21 +140,24 @@ class M5UsbHost : public EspUsbHost
       Serial.println();
     } else {
       switch(keycode) {
-        case 0x50: /* Arrow left   */
-        case 0x51: /* Arrow down   */
-        case 0x4f: /* Arrow right  */
-        case 0x52: /* Arrow up     */
-        case 0x2b: /* TAB: Jump    */
-        case 0x29: /* ESC: GAW     */
-        case 0x3a: /* F1: Game A   */
-        case 0x3b: /* F2: Game B   */
-        case 0x3c: /* F3: Time     */
-        case 0x3d: /* F4: Alarm    */
-        case 0x3e: /* F5: ACL      */
-        case 0x3f: /* F6: reserved */
-        case 0x40: /* F7: reserved */
-        case 0x41: /* F8: reserved */
-        case 0x42: /* F9: reserved */
+        case 0x50: /* Arrow left    */
+        case 0x51: /* Arrow down    */
+        case 0x4f: /* Arrow right   */
+        case 0x52: /* Arrow up      */
+        case 0x2b: /* TAB: Jump     */
+        case 0x29: /* ESC: GAW      */
+        case 0x3a: /* F1:  Game A   */
+        case 0x3b: /* F2:  Game B   */
+        case 0x3c: /* F3:  Time     */
+        case 0x3d: /* F4:  Alarm    */
+        case 0x3e: /* F5:  ACL      */
+        case 0x3f: /* F6:  reserved */
+        case 0x40: /* F7:  reserved */
+        case 0x41: /* F8:  reserved */
+        case 0x42: /* F9:  reserved */
+        case 0x43: /* F10: reserved */
+        case 0x44: /* F11: reserved */
+        case 0x45: /* F12: reserved */
           xQueueSend(usbHIDQueue, (void*)&keycode, 0);
         break;
 

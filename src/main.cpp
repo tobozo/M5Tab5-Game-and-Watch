@@ -1,3 +1,11 @@
+/*\
+ *
+ * M5Stack Tab5 Game&Watch Emulator
+ *
+ * A speculation brought to you by tobozo, copyleft (c+) 2025
+ *
+\*/
+
 #include "../gw/gfx_utils.hpp"
 
 const char* GW_TAG = "Game&Watch"; // debug tag
@@ -9,6 +17,47 @@ static void (*onBeforeGameCycles)() = nullptr;
 
 
 
+void gw_set_time()
+{
+  if( rtc_ok ) {
+    time_t now = time(0);
+    tm* localtm = localtime(&now);
+    gw_time_t gwtime = { (uint8_t)localtm->tm_hour, (uint8_t)localtm->tm_min, (uint8_t)localtm->tm_sec };
+    gw_system_set_time(gwtime);
+  }
+}
+
+
+bool boot_game(GWGame* gamePtr)
+{
+  assert(gamePtr);
+  // attach preloaded game len and data to the emulator
+  ROM_DATA_LENGTH = gamePtr->romFile.len;
+  ROM_DATA = (unsigned char *)gamePtr->romFile.data;
+
+  if(!gw_system_romload())
+  {
+    //ESP_LOGE(GW_TAG, "ROM %s failed to load", gamePtr->romname);
+    gamePtr->romFile.data = nullptr; // this is leaky
+    gamePtr->romFile.len = 0;
+    gamePtr->preloaded = false;
+    return false;
+  }
+
+  gw_system_sound_init();
+  gw_system_config();
+  gw_system_start();
+  gw_system_reset();
+
+  // run a few cycles to render the welcome screen
+  for(int i=0;i<blitCount*2;i++) {
+    gw_set_time();
+    gw_system_run(GW_SYSTEM_CYCLES);
+  }
+  gw_system_blit(gw_fb);
+  return true;
+}
+
 
 bool preload_game(GWGame* gamePtr)
 {
@@ -16,11 +65,13 @@ bool preload_game(GWGame* gamePtr)
   if(gamePtr->preloaded)
     return true;
 
+  static char checking[256] = {0};
+  snprintf(checking, 255, "        Checking %s        ", gamePtr->romname );
+
   tft.setFont(&FreeSansBold24pt7b);
   tft.setTextSize(1);
-  tft.setTextDatum(TL_DATUM);
-  tft.setCursor(tft.width()/4, tft.height()/2-tft.fontHeight()*2);
-  tft.printf("Checking %s        ", gamePtr->romname );
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString(checking, tft.width()/2, tft.height()/2-tft.fontHeight()*3);
 
   if(!game_is_loadable(gamePtr)) {
     Serial.printf("Game %s is not loadable from %s\n", gamePtr->romname, gwFS==&LittleFS?"LittleFS":"SD_MMC");
@@ -47,14 +98,9 @@ bool preload_game(GWGame* gamePtr)
   gamePtr->zoomx = gamePtr->view.innerbox.w/GWFBBox.w;
   gamePtr->zoomy = gamePtr->view.innerbox.h/GWFBBox.h;
 
-  if( ppa_enabled ) {
-    Serial.printf("[%-12s] ", gamePtr->romname);
-    gamePtr->ppa_srm = new m5::LGFX_PPA_SRM(&tft);
-    //auto panelDSI = (m5gfx::Panel_DSI*)M5.Display.getPanel();
-    //gamePtr->ppa_srm = new m5::LGFX_PPA_SRM(tft.width(), tft.height(), 2, panelDSI->config_detail().buffer);
-    auto invy = (tft.height()-1)-(gamePtr->view.innerbox.y+gamePtr->view.innerbox.h); // translation for PPA_SRM: position y is calculated from the bottom
-    gamePtr->ppa_srm->setup( {gamePtr->view.innerbox.x, invy, GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT}, gamePtr->zoomx, gamePtr->zoomy, gw_fb, true, true );
-  }
+  //Serial.printf("[%-12s] ", gamePtr->romname);
+  gamePtr->ppa_tft = new PPASrm(&tft);
+  gamePtr->ppa_fb  = new PPASrm(&BGSprite, false, false);
 
   // pre-render the jpg file
   gamePtr->bgImage = new GWImage
@@ -91,9 +137,14 @@ void preload_games()
     if(!preload_game(gamePtr))
       continue;
 
+    if(!boot_game( gamePtr ))
+      continue;
+
+    // compose/cache background image + game frame, and print a thumbnail to the display
+    composeArtwork(gamePtr, &tft, tft.width()/2, tft.height()/2, .25f);
+
     GWGames.push_back( gamePtr );
 
-    pushCacheJpg(&tft, tft.width()/2-tft.width()/16 + gamePtr->view.outerbox.x*.125, 340/*gamePtr->view.outerbox.y*/, gamePtr->bgImage, .25, .25);
   }
   gamesCount = GWGames.size();
 
@@ -107,17 +158,6 @@ void preload_games()
 
 
 
-
-
-void gw_set_time()
-{
-  if( rtc_ok ) {
-    time_t now = time(0);
-    tm* localtm = localtime(&now);
-    gw_time_t gwtime = { (uint8_t)localtm->tm_hour, (uint8_t)localtm->tm_min, (uint8_t)localtm->tm_sec };
-    gw_system_set_time(gwtime);
-  }
-}
 
 
 bool load_game(uint8_t gameid)
@@ -138,64 +178,50 @@ bool load_game(uint8_t gameid)
     if(!preload_game(gamePtr))
       return false;
 
-  if( gamePtr->view.outerbox.x > 0 )
-    // fill blank space on the left
-    BGSprite.fillRect(0, 0, gamePtr->view.outerbox.x+1, BGSprite.height(), TFT_BLACK );
-  // draw artwork
-  pushCacheJpg(&BGSprite, gamePtr->view.outerbox.x, gamePtr->view.outerbox.y, gamePtr->bgImage, gamePtr->jpg_zoom, gamePtr->jpg_zoom);
-  //BGSprite.drawJpg(gamePtr->jpgFile.data, gamePtr->jpgFile.len, gamePtr->view.outerbox.x, gamePtr->view.outerbox.y, 0, 0, 0, 0, gamePtr->jpg_zoom, gamePtr->jpg_zoom);
-  if( gamePtr->view.outerbox.x > 0 )
-    // fill blank space on the right
-    BGSprite.fillRect(BGSprite.width()-(gamePtr->view.outerbox.x+1), 0, gamePtr->view.outerbox.x+1, BGSprite.height(), TFT_BLACK );
-
-
-  // attach preloaded game len and data to the emulator
-  ROM_DATA_LENGTH = gamePtr->romFile.len;
-  ROM_DATA = (unsigned char *)gamePtr->romFile.data;
-
-  if(!gw_system_romload())
-  {
+  if(!boot_game(gamePtr)) {
     ESP_LOGE(GW_TAG, "ROM %s failed to load", gamePtr->romname);
-    gamePtr->romFile.data = nullptr; // this is leaky
-    gamePtr->romFile.len = 0;
-    gamePtr->preloaded = false;
     return false;
   }
 
   ESP_LOGI(GW_TAG, "Loaded Game: '%s' (rom=%s, fbsize=[%dx%d])", gamePtr->name, gamePtr->romname, (int)gamePtr->view.innerbox.w, (int)gamePtr->view.innerbox.h);
-
   currentGame = gameid;
 
   if( rtc_ok ) {
-    Tab5Rtc.writeRAM(0x02, currentGame); // save "currentGame" to RTC memory
+    Tab5Rtc.writeRAM(RTC_MEM_GAMEID_ADDR, currentGame); // save "currentGame" to RTC memory
   }
 
-  gw_system_sound_init();
-  gw_system_config();
-  gw_system_start();
-  gw_system_reset();
-
-  // run a few cycles to render the welcome screen
-  for(int i=0;i<blitCount*2;i++) {
-    gw_set_time();
-    gw_system_run(GW_SYSTEM_CYCLES);
-  }
-  gw_system_blit(gw_fb);
-
-  if( debug_buttons )
-    kbd_debugger.printKeyboard(gw_keyboard);
-
-  // draw emulated panel into the inner box of the background BGSprite
-  BGSprite.pushImageRotateZoom(gamePtr->view.innerbox.x, gamePtr->view.innerbox.y, 0, 0, 0.0, gamePtr->zoomx, gamePtr->zoomy, GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT, gw_fb);
-
-  // // Debug touch buttons and view
+  // Debug touch buttons and view. TODO: move this out
   if( debug_buttons ) {
+    kbd_debugger.printKeyboard(gw_keyboard);
     for( int i=0;i<gamePtr->btns_count;i++)
       drawBounds(&BGSprite, &(gamePtr->btns[i]));
     BGSprite.drawRect(gamePtr->view.innerbox.x-1, gamePtr->view.innerbox.y-1, gamePtr->view.innerbox.w+2, gamePtr->view.innerbox.h+2, TFT_RED);
   }
 
   return true;
+}
+
+
+void updateVolume()
+{
+  drawVolumeBox();
+  if( rtc_ok )
+    if( Tab5Rtc.writeRAM(RTC_MEM_VOLUME_ADDR, (uint8_t*)&volume, sizeof(volume)) !=  sizeof(volume)) { // 2 bytes
+      ESP_LOGE(GW_TAG, "Unable to write %d bytes to RTC ram at address %d", sizeof(volume), RTC_MEM_VOLUME_ADDR );
+    }
+  ESP_LOGD(GW_TAG, "Volume changed to: %d", volume);
+  audio_enabled = volume > 0;
+}
+
+void updateBrightness()
+{
+  drawBrightnessBox();
+  tft.setBrightness(brightness);
+  if( rtc_ok )
+    if( Tab5Rtc.writeRAM(RTC_MEM_BRIGHT_ADDR, (uint8_t*)&brightness, sizeof(brightness)) != sizeof(brightness)) { // 1 byte
+      ESP_LOGE(GW_TAG, "Unable to write %d bytes to RTC ram at address %d", sizeof(brightness), RTC_MEM_BRIGHT_ADDR );
+    }
+  ESP_LOGD(GW_TAG, "Brightness changed to: %d", brightness);
 }
 
 
@@ -217,28 +243,41 @@ void handle_option_button(int state)
         volume += volume_increment;
       if( volume>volume_max )
         volume = volume_max;
+      updateVolume();
     break;
     case GW_BUTTON_DOWN:
       if( volume>= volume_increment )
         volume -= volume_increment;
       else
         volume=0;
+      updateVolume();
     break;
-    case GW_BUTTON_TIME:
-      if( rtc_ok ) {
-        gw_time_t gwtime = gw_system_get_time();
-        const m5::rtc_time_t m5time(gwtime.hours, gwtime.minutes, gwtime.seconds);
-        Tab5Rtc.setTime(m5time);
-        Tab5Rtc.setSystemTimeFromRtc();
-        ESP_LOGI(GW_TAG, "RTC+System time adjusted from G&W to %d:%d:%d\n", gwtime.hours, gwtime.minutes, gwtime.seconds);
-      }
+    case GW_BUTTON_BRIGHT: // bright, not right!
+      if( brightness == 0 )
+        brightness = brightness_increment-1;
+      else
+        brightness += brightness_increment;
+      if( brightness>brightness_max )
+        brightness = brightness_max;
+      updateBrightness();
+    break;
+    case GW_BUTTON_DIM:
+      if( brightness - brightness_increment > 0 )
+        brightness -= brightness_increment;
+      else
+        brightness = 1; // don't turn display off by setting brightness to 0
+      updateBrightness();
+    break;
+
+    case GW_BUTTON_POWEROFF:
+      ESP_LOGD(GW_TAG, "Powering off");
+      M5.Power.powerOff();
     break;
     // gear icon, show/hide options menu
     case GW_BUTTON_PREFS         : in_options_menu = !in_options_menu; ESP_LOGI(GW_TAG, "%sabled %s", in_options_menu?"en":"dis", "option menu"); break;
     // those are ignored when in_options_menu=false
     case GW_BUTTON_TOGGLE_AUDIO  : CASE_OPTMENU(audio_enabled, "audio");
     case GW_BUTTON_TOGGLE_USB_HID: CASE_OPTMENU(usbhost_enabled, "usbhost");
-    case GW_BUTTON_TOGGLE_PPA    : CASE_OPTMENU(ppa_enabled, "ppa");
     case GW_BUTTON_TOGGLE_FPS    : CASE_OPTMENU(show_fps, "fps");
     case GW_BUTTON_TOGGLE_DEBUG  : CASE_OPTMENU(debug_buttons, "debug");
 
@@ -246,11 +285,6 @@ void handle_option_button(int state)
     break;
   }
   #undef CASE_OPTMENU
-
-  drawVolume(&FGSprite, (uint16_t*)FGSprite.getBuffer() );
-
-  if( rtc_ok )
-    Tab5Rtc.writeRAM(0x0, (uint8_t*)&volume, sizeof(volume));
 }
 
 
@@ -264,6 +298,8 @@ int handle_menu_gesture()
 
   ESP_LOGD(GW_TAG, "spent %d ms drawing menu", millis()-now);
 
+  auto gamePtr = GWGames[currentGame];
+
   gamesCount = GWGames.size();
 
   if( gamesCount == 0 ) {
@@ -273,7 +309,6 @@ int handle_menu_gesture()
 
   static m5::touch_state_t prev_state;
   static int32_t flickx = -1;
-  //GWTouchButton *btns;
   GWTouchButton* GAWButton;
   int state = 0;
   int flick_dir = 0;
@@ -309,7 +344,6 @@ int handle_menu_gesture()
             case BUTTON_1    : break; // 0x2b, // TAB: Jump/Fire/Action
             case KEY_F1      : handle_option_button(GW_BUTTON_TOGGLE_AUDIO);   goto _continue; // 0x3a,
             case KEY_F2      : handle_option_button(GW_BUTTON_TOGGLE_USB_HID); goto _continue; // 0x3b,
-            case KEY_F3      : handle_option_button(GW_BUTTON_TOGGLE_PPA);     goto _continue; // 0x3c,
             case KEY_F4      : handle_option_button(GW_BUTTON_TOGGLE_FPS);     goto _continue; // 0x3d,
             case KEY_F5      : handle_option_button(GW_BUTTON_TOGGLE_DEBUG);   goto _continue; // 0x3e,
             case KEY_F6      : handle_option_button(GW_BUTTON_PREFS);          goto _continue; // 0x3f,
@@ -368,8 +402,11 @@ int handle_menu_gesture()
 
         switch(state) {
           case GW_BUTTON_PREFS: transition_direction = in_options_menu ? 1 : -1; break;
-          case GW_BUTTON_DOWN: // volume up/down : don't redraw menu
-          case GW_BUTTON_UP: goto _continue; break;
+          case GW_BUTTON_DIM:    // brightness down: don't redraw menu
+          case GW_BUTTON_BRIGHT: // brightness up: don't redraw menu
+          case GW_BUTTON_DOWN:   // volume down: don't redraw menu
+          case GW_BUTTON_UP:     // volume up: don't redraw menu
+            goto _continue; break;
           default: transition_direction = 0;
         }
         goto _draw_menu;
@@ -424,6 +461,8 @@ int handle_menu_gesture()
         else
           goto _load_prev_game;
       }
+      gamePtr = GWGames[currentGame];
+      drawBackground(gamePtr, &BGSprite);
       ESP_LOGD(GW_TAG, "spent %d ms loading game", millis()-now);
 
     _draw_menu:
@@ -568,23 +607,13 @@ void gameLoop(bool skip_frame=false)
 
   auto gamePtr = GWGames[currentGame];
 
-  if( !ppa_enabled || !gamePtr->ppa_srm ) { // HW accel is disabled
-
-    gw_system_blit(gw_fb);
-    fpsCounter.addFrame();
-    handleFps();
-    fpsCounter.addFrame();
-    tft.pushImageRotateZoom(gamePtr->view.innerbox.x, gamePtr->view.innerbox.y, 0, 0, 0.0, gamePtr->zoomx, gamePtr->zoomy, GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT, gw_fb);
-
-  } else if( gamePtr->ppa_srm->available() ) {
+  if( gamePtr->ppa_tft->available() ) {
 
     gw_system_blit(gw_fb);
     handleFps();
 
-    //auto invy = (tft.height()-1)-(gamePtr->view.innerbox.y+gamePtr->view.innerbox.h); // translation for PPA_SRM: position y is calculated from the bottom
-    //gamePtr->ppa_srm->setup( {gamePtr->view.innerbox.x, invy, GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT}, gamePtr->zoomx, gamePtr->zoomy, gw_fb, true, true );
-
-    if( gamePtr->ppa_srm->exec() )
+    auto invy = tft.height()-(gamePtr->view.innerbox.y+gamePtr->view.innerbox.h-1); // translation for PPA_SRM: position y is calculated from the bottom
+    if( gamePtr->ppa_tft->pushImageSRM(gamePtr->view.innerbox.x-1, invy, 0, 0, 0, gamePtr->zoomx, gamePtr->zoomy, GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT, gw_fb, true) )
       fpsCounter.addFrame();
   }
 }
@@ -607,6 +636,7 @@ void audioTask(void*param)
     vTaskDelete(NULL);
     return;
   }
+  M5.Speaker.stop();
   M5.delay(100);
   M5.Speaker.tone(2000, 100);
   M5.delay(100);
@@ -639,7 +669,7 @@ void audioTask(void*param)
         us_remaining = fmod(us_remaining, 1000.0f);
       }
     }
-    if( ppa_enabled && us_remaining >= 1.0f ) {
+    if( us_remaining >= 1.0f ) {
       delayMicroseconds(us_remaining);
     }
     if (xQueueReceive(audioBufferQueue, bufPos, portMAX_DELAY) == pdPASS) {
@@ -676,10 +706,8 @@ void gameTask(void*param)
     tft.setRotation(1); // default
   }
 
-  ESP_LOGI("TEST", "tft color depth: %d", tft.getColorDepth() );
 
-  // TODO: animate this
-  tft.fillCircle(tft.width()/2, tft.height()/2, 48, random());
+  bootAnimation();
 
   {
     if( usbhost_enabled ) {
@@ -708,13 +736,11 @@ void gameTask(void*param)
         (portNUM_PROCESSORS-1)-xPortGetCoreID() // attach to the other core
       );
       while(!audio_ready) {
-        vTaskDelay(10);
+        vTaskDelay(1);
       }
     }
   }
 
-  // TODO: fancy preload animation
-  tft.fillCircle(tft.width()/2, tft.height()/2, 48, TFT_BLACK);
 
   {
     initSDCard();
@@ -727,7 +753,6 @@ void gameTask(void*param)
 
     ESP_LOGI(GW_TAG, "USB-HID host:                       %sabled", usbhost_enabled?"en":"dis");
     ESP_LOGI(GW_TAG, "Builtin Audio:                      %sabled", audio_enabled?"en":"dis");
-    ESP_LOGI(GW_TAG, "Pixel-Processing Accelerator (ppa): %sabled", ppa_enabled?"en":"dis");
     ESP_LOGI(GW_TAG, "Builtin RTC module:                 %sabled", rtc_ok?"en":"dis");
     ESP_LOGI(GW_TAG, "Gyro/accel IMU:                     %sabled", M5.Imu.isEnabled()?"en":"dis");
     ESP_LOGI(GW_TAG, "SDCard:                             %sabled", sdcard_ok?"en":"dis");
@@ -742,10 +767,23 @@ void gameTask(void*param)
   {
     if( rtc_ok ) {
       uint16_t ram_volume;
-      if( Tab5Rtc.readRAM(0x0, (uint8_t*)&ram_volume, sizeof(ram_volume)) )
+      if( Tab5Rtc.readRAM(RTC_MEM_VOLUME_ADDR, (uint8_t*)&ram_volume, sizeof(ram_volume)) )
         if( ram_volume<=volume_max )
           volume = ram_volume;
+
+      uint8_t ram_brightness;
+      if( Tab5Rtc.readRAM(RTC_MEM_BRIGHT_ADDR, (uint8_t*)&ram_brightness, sizeof(ram_brightness)) ) {
+        if( ram_brightness<=brightness_max && ram_brightness>0 )
+          brightness = ram_brightness;
+        else
+          ESP_LOGE(GW_TAG, "Invalid RTC ram value at address 0x3: %d", ram_brightness);
+      } else {
+        ESP_LOGE(GW_TAG, "Unable to read RTC ram at address 0x3");
+      }
+
     }
+
+    tft.setBrightness(brightness);
 
     if( littlefs_ok && sdcard_ok ) {
       do {
@@ -776,42 +814,52 @@ void gameTask(void*param)
   }
 
   {
-    //allocSprite("Game&Watch emulator layer", &GWSprite, GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT, 0x80);
-    GWSprite.setPsram(true);
-    if(! GWSprite.createSprite(GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT) ) {
-      Serial.println("Failed to create emulator Sprite, halting");
-      while(1);
-    }
+    allocSprite("Game&Watch emulator layer", &GWSprite, GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT);
     gw_fb = (uint16_t*)GWSprite.getBuffer(); // attach sprite buffer to emulator for rendering
 
-    // sprite for stylized text boxes
-    textBox.setPsram(true);
-    if(!textBox.createSprite(tft.width()/3, tft.height()/3)) {
-      Serial.println("Failed to create textBox Sprite, halting");
-      while(1);
+    { // FPS text layer
+      FPSSprite.setPsram(true);
+      if(! FPSSprite.createSprite(250, 64) ) {
+        Serial.println("Failed to create FPSSprite, halting");
+        while(1);
+      }
+      FPSSprite.setTextDatum(TL_DATUM);
+      FPSSprite.setFont(&FreeSansBold24pt7b);
+      FPSSprite.setTextColor(TFT_WHITE, TFT_BLACK);
+      FPSSprite.setTextSize(1);
     }
-    textBox.setFont(&FreeSansBold24pt7b);
+
+    { // sprite for stylized text boxes
+      textBox.setPsram(true);
+      if(!textBox.createSprite(tft.width()/3, tft.height()/3)) {
+        Serial.println("Failed to create textBox Sprite, halting");
+        while(1);
+      }
+      textBox.setFont(&FreeSansBold24pt7b);
+    }
+
+    { // top icons menu mask
+      MenuOptionsMask.setPsram(true);
+      if( !MenuOptionsMask.createSprite( tft.width(), 128 ) ) {
+        Serial.println("Failed to create menu mask Sprite, halting");
+        while(1);
+      }
+    }
 
     // compositor/blender for game menu and game background
-    allocSprite("Background+Emulator layer", &BGSprite, tft.width(), tft.height(), 0x40);
-    allocSprite("Mask+Menu layer", &FGSprite, tft.width(), tft.height(), 0x40);
-    allocSprite("Composer+Blender output", &BlendSprite, tft.width(), tft.height(), 0x40);
+    allocSprite("Background+Emulator layer", &BGSprite,    tft.width(), tft.height());
+    allocSprite("Mask+Menu layer",           &FGSprite,    tft.width(), tft.height());
+    allocSprite("Composer+Blender output",   &BlendSprite, tft.width(), tft.height());
 
-
-    if( ppa_enabled ) {
-      ppa_blend = new LGFX_PPA_BLEND(tft.width(), tft.height(), 2, BlendSprite.getBuffer());
-      GWBox refBox = { 0, 0, (float)tft.width(), (float)tft.height() };
-      ppa_blend->setup(refBox, FGSprite.getBuffer(), refBox, BGSprite.getBuffer(), false, false );
-      ppa_srm = new LGFX_PPA_SRM(&tft);
-    }
-
+    ppa_srm   = new PPASrm(&BGSprite, false, false);
+    ppa_blend = new PPABlend(&BlendSprite, false, false );
   }
-
 
 
   if( GWGames.size() == 0 ) {
     preload_games();
   }
+
 
   static auto gw_alloc = [](size_t size) -> void(*)
   {
@@ -822,7 +870,7 @@ void gameTask(void*param)
 
   if( rtc_ok ) {
     // load last game id from RTC RAM
-    uint8_t savedGame = Tab5Rtc.readRAM(0x02);
+    uint8_t savedGame = Tab5Rtc.readRAM(RTC_MEM_GAMEID_ADDR);
     if(savedGame<gamesCount)
       currentGame = savedGame;
   }
@@ -834,6 +882,8 @@ void gameTask(void*param)
       tft_error("Game loading failed, Halting");
       while(1);
     }
+    auto gamePtr = GWGames[currentGame];
+    drawBackground(gamePtr, &BGSprite);
     pushSpriteTransition(&tft, &BGSprite, 0);
     onAfterGameCycles = gw_set_time; // sync Game&Watch time with system time
   };

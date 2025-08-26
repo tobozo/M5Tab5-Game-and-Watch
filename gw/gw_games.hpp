@@ -20,9 +20,9 @@ GWTouchButton   NWS5Btns[] = { NWSACL, NWSAlarm, NWSGAW, NWSGameA, NWSGameB, NWS
 
 // Supported single screen games
 GWGame gw_ball    ( "Ball"                  , "gnw_ball"    , SSLay , SS2Btns  );
-GWGame gw_bfight  ( "Balloon Fight"         , "gnw_bfight"  , CSLay , CS5Btns  );
+GWGame gw_bfight  ( "Balloon Fight"         , "gnw_bfight"  , CSLay , CS5Btns  ); // TODO: CSLay GWButton
 GWGame gw_chef    ( "Chef"                  , "gnw_chef"    , WSLay , WS2Btns  );
-GWGame gw_climber ( "Climber"               , "gnw_climber" , CSLay , CS5Btns  );
+GWGame gw_climber ( "Climber"               , "gnw_climber" , CSLay , CS5Btns  ); // TODO: CSLay GWButton
 GWGame gw_dkjr    ( "Donkey Kong Jr."       , "gnw_dkjr"    , NWSLay, NWS5Btns );
 GWGame gw_dkjrp   ( "Donkey Kong Jr."       , "gnw_dkjrp"   , NWSLay, NWS5Btns );
 GWGame gw_fire    ( "Fire"                  , "gnw_fire"    , WSLay , WS2Btns  );
@@ -36,7 +36,7 @@ GWGame gw_manhole ( "Manhole"               , "gnw_manhole" , NWSLay, NWS4Btns )
 GWGame gw_manholeg( "Manhole"               , "gnw_manholeg", GSLay , GS4Btns  );
 GWGame gw_mariocm ( "Mario's Cement Factory", "gnw_mariocm" , NWSLay, NWS3Btns );
 GWGame gw_mariocmt( "Mario's Cement Factory", "gnw_mariocmt", NWSLay, NWS3Btns );
-GWGame gw_mariotj ( "Mario the Juggler"     , "gnw_mariotj" , NWSLay, NWS2Btns );
+GWGame gw_mariotj ( "Mario the Juggler"     , "gnw_mariotj" , NWSLay, NWS2Btns ); // TODO: CS2Btns ?
 GWGame gw_mbaway  ( "Mario's Bombs Away"    , "gnw_mbaway"  , NWSLay, NWS3Btns );
 GWGame gw_mmouse  ( "Mickey Mouse"          , "gnw_mmouse"  , WSLay , WS4Btns  );
 GWGame gw_mmousep ( "Mickey Mouse"          , "gnw_mmousep" , WSLay , WS2Btns  );
@@ -44,7 +44,7 @@ GWGame gw_octopus ( "Octopus"               , "gnw_octopus" , WSLay , WS2Btns  )
 GWGame gw_pchute  ( "Parachute"             , "gnw_pchute"  , WSLay , WS2Btns  );
 GWGame gw_popeye  ( "Popeye"                , "gnw_popeye"  , WSLay , WS2Btns  );
 GWGame gw_popeyep ( "Popeye"                , "gnw_popeyep" , NWSLay, NWS3Btns );
-GWGame gw_smb     ( "Super Mario Bros."     , "gnw_smb"     , CSLay , CS5Btns  );
+GWGame gw_smb     ( "Super Mario Bros."     , "gnw_smb"     , CSLay , CS5Btns  ); // TODO: CSLay GWButton
 GWGame gw_snoopyp ( "Snoopy"                , "gnw_snoopyp" , NWSLay, NWS3Btns );
 GWGame gw_stennis ( "Snoopy Tennis"         , "gnw_stennis" , WSLay , WS3Btns  );
 GWGame gw_tbridge ( "Turtle Bridge"         , "gnw_tbridge" , WSLay , WS2Btns  );

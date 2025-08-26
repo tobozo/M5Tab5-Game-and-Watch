@@ -13,6 +13,10 @@ m5::RTC8130_Class Tab5Rtc;
 
 bool rtc_ok = false;
 
+#define RTC_MEM_VOLUME_ADDR 0x0 // 2 bytes
+#define RTC_MEM_GAMEID_ADDR 0x2 // 1 byte
+#define RTC_MEM_BRIGHT_ADDR 0x3 // 1 byte
+
 String formatDateTime(struct tm &t)
 {
   char buffer[255];

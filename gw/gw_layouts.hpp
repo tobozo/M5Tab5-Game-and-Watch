@@ -15,10 +15,12 @@ extern GWImage IconDebug  ;
 extern GWImage IconFPS    ;
 extern GWImage IconGamepad;
 extern GWImage IconMute   ;
-extern GWImage IconPPA    ;
 extern GWImage IconPrefs  ;
 extern GWImage IconSndM   ;
 extern GWImage IconSndP   ;
+extern GWImage IconPower  ;
+extern GWImage IconLightP ;
+extern GWImage IconLightM ;
 
 namespace GW
 {
@@ -46,7 +48,10 @@ namespace GW
     KEY_F6       = 0x3f, // F6: reserved
     KEY_TIME     = 0x40, // F7: Time
     KEY_ALARM    = 0x41, // F8: Alarm
-    KEY_ACL      = 0x42  // F9: ACL
+    KEY_ACL      = 0x42, // F9: ACL
+    KEY_F10      = 0x43,
+    KEY_F11      = 0x44,
+    KEY_F12      = 0x45
   };
 
   // extra buttons functionalities for menu routing
@@ -54,61 +59,74 @@ namespace GW
   #define GW_BUTTON_GAW            -2 // An extra button over the "Game&Watch" logo
   #define GW_BUTTON_TOGGLE_AUDIO   -3 // audio_enabled
   #define GW_BUTTON_TOGGLE_USB_HID -4 // usbhost_enabled
-  #define GW_BUTTON_TOGGLE_PPA     -5 // ppa_enabled
+  #define GW_BUTTON_POWEROFF       -5 // turn device off
   #define GW_BUTTON_TOGGLE_FPS     -6 // show_fps
   #define GW_BUTTON_TOGGLE_DEBUG   -7 // debug_buttons
   #define GW_BUTTON_PREFS          -8 // in_options_menu
+  #define GW_BUTTON_DIM            -9 // dim
+  #define GW_BUTTON_BRIGHT        -10 // enlight
   #define GW_BUTTON_NONE         -999 // do nothing
 
 
-  //GWTouchButton BtnOptionPPA  (/*🚀*/"HW Accel",  400,    8,    0,  0, GW_BUTTON_TOGGLE_PPA,     KEY_F3,       true, &IconPPA);     // ppa_enabled
-  GWTouchButton BtnOptionTime (/*🕑*/"Set Time",  525,    8,  100, 90, GW_BUTTON_TIME,           KEY_TIME,     true, &IconSaveRTC); // save game time to rtc
-  GWTouchButton BtnOptionSnd  (/*🔇*/"Mute",      650,    8,  100, 90, GW_BUTTON_TOGGLE_AUDIO,   KEY_F1,       true, &IconMute);    // audio_enabled
-  GWTouchButton BtnOptionJoy  (/*🕹*/"USB-HID",   775,    8,  100, 90, GW_BUTTON_TOGGLE_USB_HID, KEY_F2,       true, &IconGamepad); // usbhost_enabled
-  GWTouchButton BtnOptionFPS  (/*🎞*/"Show FPS",  900,    8,  100, 90, GW_BUTTON_TOGGLE_FPS,     KEY_F4,       true, &IconFPS);     // show_fps
-  GWTouchButton BtnOptionDbg  (/*🐞*/"Debug",    1025,    8,  100, 90, GW_BUTTON_TOGGLE_DEBUG,   KEY_F5,       true, &IconDebug);   // debug_buttons
+  //GWTouchButton BtnOptionDbg  (/*🐞*/"Debug",     525,    8,  100, 90, GW_BUTTON_TOGGLE_DEBUG,   KEY_F5,       true, &IconDebug);   // debug_buttons
+  //GWTouchButton BtnOptionJoy  (/*🕹*/"USB-HID",   650,    8,  100, 90, GW_BUTTON_TOGGLE_USB_HID, KEY_F2,       true, &IconGamepad); // usbhost_enabled
+
+  GWTouchButton BtnPowerOff   (/*💤*/"PowerOff",  775,    8,  100, 90, GW_BUTTON_POWEROFF,       KEY_ACL,      true, &IconPower);   // turn off
+  GWTouchButton BtnOptionSnd  (/*🔇*/"Mute",      900,    8,  100, 90, GW_BUTTON_TOGGLE_AUDIO,   KEY_F1,       true, &IconMute);    // audio_enabled
+
+  GWTouchButton BtnOptionFPS  (/*🎞*/"Show FPS", 1025,    8,  100, 90, GW_BUTTON_TOGGLE_FPS,     KEY_F4,       true, &IconFPS);     // show_fps
+
   GWTouchButton BtnOptionOpts (/*⚙*/"Options",  1163,    8,  100, 90, GW_BUTTON_PREFS,          KEY_F6,       true, &IconPrefs);   // toggle options menu
-  GWTouchButton BtnOptionVolP (/*🔈*/"Vol-",      439,  611,  100, 90, GW_BUTTON_DOWN,           ARROW_DOWN,   true, &IconSndM);    // increase volume
-  GWTouchButton BtnOptionVolM (/*🔈*/"Vol+",      739,  611,  100, 90, GW_BUTTON_UP,             ARROW_UP,     true, &IconSndP);    // decrease volume
+
+  GWTouchButton BtnOptionDim  (/*🔅*/"Light-",    439,  501,  100, 90, GW_BUTTON_DIM,            KEY_F10,      true, &IconLightM);    // increase brightness
+  GWTouchButton BtnOptionLight(/*🔆*/"Light+",    739,  501,  100, 90, GW_BUTTON_BRIGHT,         KEY_F11,      true, &IconLightP);    // decrease brightness
+
+  GWTouchButton BtnOptionVolDec(/*🔈*/"Vol-",     439,  611,  100, 90, GW_BUTTON_DOWN,           ARROW_DOWN,   true, &IconSndM);    // increase volume
+  GWTouchButton BtnOptionVolInc(/*🔈*/"Vol+",     739,  611,  100, 90, GW_BUTTON_UP,             ARROW_UP,     true, &IconSndP);    // decrease volume
+
   GWTouchButton BtnOptionTerm (/*🗂*/"term",        0,    0, 1280, 90, GW_BUTTON_NONE,           KEYCODE_NONE, true); // Touch propagation terminator (prevents bubbling)
 
 
   // UI Menu buttons (extra options, not related to Game&Watch UI)
   GWTouchButton OptionButtons[] = {
-    //BtnOptionPPA,
-    BtnOptionVolP,
-    BtnOptionVolM,
-    BtnOptionTime,
+    BtnPowerOff,
     BtnOptionSnd,
-    BtnOptionJoy,
+//    BtnOptionJoy,
     BtnOptionFPS,
-    BtnOptionDbg,
+//    BtnOptionDbg,
     BtnOptionOpts,
-    BtnOptionTerm
+    BtnOptionTerm,
+    BtnOptionVolDec,
+    BtnOptionVolInc,
+    BtnOptionDim,
+    BtnOptionLight
   };
 
   const size_t optionButtonsCount = sizeof(OptionButtons)/sizeof(GWTouchButton);
 
   // Wrappers around some option buttons used as switches
   GWToggleSwitch BtnOption( &BtnOptionOpts, &in_options_menu );
-  GWToggleSwitch BtnDbg   ( &BtnOptionDbg,  &debug_buttons   );
+//  GWToggleSwitch BtnDbg   ( &BtnOptionDbg,  &debug_buttons   );
   GWToggleSwitch BtnFps   ( &BtnOptionFPS,  &show_fps        );
-  GWToggleSwitch BtnJoy   ( &BtnOptionJoy,  &usbhost_enabled );
+//  GWToggleSwitch BtnJoy   ( &BtnOptionJoy,  &usbhost_enabled );
   GWToggleSwitch BtnMute  ( &BtnOptionSnd,  &audio_enabled   );
 
   GWToggleSwitch toggleSwitches[] =
   {
     BtnOption,
-    BtnDbg   ,
+//    BtnDbg   ,
     BtnFps   ,
-    BtnJoy   ,
+//    BtnJoy   ,
     BtnMute
   };
 
   const size_t toggleSwitchesCount = sizeof(toggleSwitches)/sizeof(GWToggleSwitch);
 
-  // volume box position and dimensions
-  GWBox volumeBox = { 539, 661, 200, 48 };
+  // brightness level position and dimensions
+  GWBox brightnessBox = { 539, 551, 200, 48 };
+  // volume level position and dimensions
+  GWBox volumeBox     = { 539, 661, 200, 48 };
+
 
   // Game&Watch single screen layouts, with their respective buttons layouts
 
@@ -117,7 +135,8 @@ namespace GW
     // Game/Time/Alarm/ACL bottom middle
     // logo top left
     // 2 different button layouts
-    GWLayout SSLay = {.name="Silver Screen", .innerbox={.x=0.292134831461, .y=0.255555555556, .w=0.422, .h=0.4}};
+    // NOTE: innerbox w and h must have common divisors with framebuffer width and height **and** be a multiple of the screen ration
+    GWLayout SSLay = { .name="Silver Screen", .innerbox={.x=412,.y=180, .w=460, .h=300, .normalized=true} };
 
     GWTouchButton SSGAW(   "SSGAW",   0.071161, 0.130556, 0.116105, 0.152778, GW_BUTTON_GAW, KEY_ESC); // nintendo logo
     GWTouchButton SSGameA( "SSGameA", 0.473783, 0.825000, 0.086142, 0.086111, GW_BUTTON_GAME, KEY_F1);
@@ -150,7 +169,8 @@ namespace GW
     // Game/Time/Alarm/ACL bottom middle
     // logo top left
     // 2 different button layouts
-    GWLayout GSLay = {.name="Gold Screen", .innerbox={.x=0.284644, .y=0.238889, .w=0.434457, .h=0.427778}};
+    // NOTE: innerbox w and h must have common divisors with framebuffer width and height **and** be a multiple of the screen ration
+    GWLayout GSLay = {.name="Gold Screen", .innerbox={.x=408, .y=172, .w=460,.h=300, .normalized=true } };
 
     GWTouchButton GSGAW(   "GSGAW",   0.065543, 0.133333, 0.121723, 0.152778, GW_BUTTON_GAW, KEY_ESC); // nintendo logo
     GWTouchButton GSGameA( "GSGameA", 0.479401, 0.819444, 0.086142, 0.091667, GW_BUTTON_GAME, KEY_F1);
@@ -182,9 +202,10 @@ namespace GW
     // Game/Time/Alarm/ACL top right
     // logo top left
     // 3 different button layouts
-    GWLayout WSLay = {.name="Wide Screen", .innerbox={.x=0.267112, .y=0.25, .w=0.48, .h=0.5}};
+    // NOTE: innerbox w and h must have common divisors with framebuffer width and height **and** be a multiple of the screen ration
+    GWLayout WSLay = {.name="Wide Screen", .innerbox={.x=360, .y=180, .w=560, .h=360, .normalized=true}};
 
-    GWTouchButton WSGAW(   "WSGAW",   0.043406, 0.158333, 0.123539, 0.172222, GW_BUTTON_GAW, KEY_ESC); // nintendo logo
+    GWTouchButton WSGAW(   "WSGAW",   0.044000, 0.160000, 0.110000, 0.160000, GW_BUTTON_GAW, KEY_ESC); // nintendo logo
     GWTouchButton WSGameA( "WSGameA", 0.834725, 0.097222, 0.071786, 0.077778, GW_BUTTON_GAME, KEY_F1);
     GWTouchButton WSGameB( "WSGameB", 0.834725, 0.211111, 0.071786, 0.077778, GW_BUTTON_TIME, KEY_F2);
     GWTouchButton WSTime(  "WSTime",  0.834725, 0.327778, 0.071786, 0.077778, GW_BUTTON_B + GW_BUTTON_TIME, KEY_TIME);
@@ -222,9 +243,9 @@ namespace GW
     // Game/Time/Alarm/ACL top right
     // logo top left
     // 4 different button layouts
-    GWLayout NWSLay = {.name="New Wide Screen", .innerbox={.x=0.264214046823, .y=0.25, .w=0.471571906355, .h=0.497222222222}};
+    GWLayout NWSLay = {.name="New Wide Screen", .innerbox={.x=360, .y=180, .w=560, .h=360, .normalized=true}};
 
-    GWTouchButton NWSGAW(   "NWSGAW",   0.051753, 0.144444, 0.123539, 0.175000, GW_BUTTON_GAW, KEY_ESC); // nintendo logo
+    GWTouchButton NWSGAW(   "NWSGAW",   0.052000, 0.150000, 0.115000, 0.155000, GW_BUTTON_GAW, KEY_ESC); // nintendo logo
     GWTouchButton NWSGameA( "NWSGameA", 0.834725, 0.097222, 0.071786, 0.077778, GW_BUTTON_GAME, KEY_F1);
     GWTouchButton NWSGameB( "NWSGameB", 0.834725, 0.211111, 0.071786, 0.077778, GW_BUTTON_TIME, KEY_F2);
     GWTouchButton NWSTime(  "NWSTime",  0.834725, 0.327778, 0.071786, 0.077778, GW_BUTTON_B + GW_BUTTON_TIME, KEY_TIME);

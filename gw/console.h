@@ -30,7 +30,6 @@ struct AudioBuffer
 static AudioBuffer bufferPool[AUDIO_POOL_SIZE];
 QueueHandle_t audioBufferQueue;
 static bool audio_ready = false;
-const uint16_t volume_max = INT16_MAX; // 0x7fff
 
 
 // Emulator refresh rate (GW_REFRESH_RATE) and audio quality are tied, higher refresh rate = bigger audio buffer = better audio quality
